@@ -629,7 +629,7 @@ const API = {
     },
 
     // 在 API 类内部添加一个估算 Token 的辅助函数
-// 1. 新增：放在 API 类里面的辅助函数，用来估算 Token
+    // 1. 新增：放在 API 类里面的辅助函数，用来估算 Token
     estimateTokens(text) {
         if (!text) return 0;
         // 简单粗暴的估算公式：
@@ -639,6 +639,64 @@ const API = {
         const otherCount = text.length - cjkCount;
         return Math.ceil(cjkCount * 1.8 + otherCount * 0.35);
     },
+
+    // ============================================
+    // ★ 新增：测试 API 连接专用函数
+    // ============================================
+    // ★ 新增：测试连接专用函数
+    // 新增：测试连接函数
+    async testConnection(url, key, model) {
+        const provider = this.getProvider(url);
+        let fetchUrl = url;
+        let options = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        };
+
+        // 构造一个极简的消息体，只为了测试通断
+        const testMessage = "Ping"; 
+
+        if (provider === 'claude') {
+            options.headers['x-api-key'] = key;
+            options.headers['anthropic-version'] = '2023-06-01';
+            options.body = JSON.stringify({
+                model: model,
+                messages: [{ role: "user", content: testMessage }],
+                max_tokens: 1 // 省流
+            });
+        } else if (provider === 'gemini') {
+            fetchUrl = url.endsWith(':generateContent') ? url : `${url}/${model}:generateContent?key=${key}`;
+            options.body = JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: testMessage }] }],
+                generationConfig: { maxOutputTokens: 1 }
+            });
+        } else {
+            // OpenAI / DeepSeek / SiliconFlow 等
+            options.headers['Authorization'] = `Bearer ${key}`;
+            options.body = JSON.stringify({
+                model: model,
+                messages: [{ role: "user", content: testMessage }],
+                max_tokens: 1 // 省流
+            });
+        }
+
+        try {
+            const response = await fetch(fetchUrl, options);
+            
+            if (!response.ok) {
+                // 尝试读取错误信息
+                const errText = await response.text();
+                // 抛出带状态码的错误
+                throw new Error(`${response.status} ${errText.slice(0, 50)}...`); 
+            }
+            
+            // 如果成功，不需要返回内容，只要不报错就是成功
+            return true;
+        } catch (error) {
+            throw error;
+        }
+    },
+    // ============================================
 
     async chat(messages, settings) {
         const { API_URL, API_KEY, MODEL } = settings;
@@ -2516,6 +2574,14 @@ const App = {
         if(mainConfirm) mainConfirm.onclick = () => this.saveSettingsFromUI();
         if(UI.els.fetchBtn) UI.els.fetchBtn.onclick = () => this.fetchModelsForUI();
 
+        // =========== 【新增】测试API按钮事件 ===========
+        const testApiBtn = document.getElementById('test-api-btn');
+        if (testApiBtn) {
+            testApiBtn.onclick = () => this.handleTestConnection();
+        }
+
+        // =============================================
+
         // --- ★★★ 世界书弹窗事件绑定 ★★★ --
         const wiClose = document.getElementById('wi-close-btn');
         if(wiClose) wiClose.onclick = () => UI.els.wiModal.classList.add('hidden');
@@ -2752,6 +2818,51 @@ const App = {
         });
     },
 
+    // 这里我们直接从 input 输入框取值
+    async handleTestConnection() {
+        // 1. 获取 DOM 元素
+        const urlInput = UI.els.settingUrl; // 假设你在 UI.els 里存了这个 input
+        const keyInput = UI.els.settingKey;
+        const modelInput = UI.els.settingModel;
+        const statusEl = document.getElementById('test-api-status');
+        const btn = document.getElementById('test-api-btn');
+
+        if (!statusEl) return;
+
+        // 2. 简单的校验
+        const url = urlInput.value.trim();
+        const key = keyInput.value.trim();
+        const model = modelInput.value.trim();
+
+        if (!url || !key) {
+            statusEl.textContent = '请先填写地址和密钥';
+            statusEl.className = 'status-failure';
+            return;
+        }
+
+        // 3. 设置 UI 为“连接中”
+        statusEl.textContent = '连接中...';
+        statusEl.className = 'status-pending';
+        btn.disabled = true;
+
+        try {
+            // 4. 调用 API 测试
+            await API.testConnection(url, key, model);
+
+            // 5. 成功
+            statusEl.textContent = '已连接！';
+            statusEl.className = 'status-success';
+        } catch (err) {
+            // 6. 失败
+            console.error("API测试失败:", err);
+            // 显示具体的错误代码，比如 "连接失败: 401 Unauthorized"
+            statusEl.textContent = `连接失败: ${err.message}`;
+            statusEl.className = 'status-failure';
+        } finally {
+            btn.disabled = false;
+        }
+    },
+
     async fetchModelsForUI() {
         const url = UI.els.settingUrl.value.trim();
         const key = UI.els.settingKey.value.trim();
@@ -2786,6 +2897,7 @@ const App = {
             btn.disabled = false;
         }
     },
+
 
     bindImageUpload(inputId, imgId, inputUrlId, callback) {
         const el = document.getElementById(inputId);

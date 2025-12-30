@@ -1018,8 +1018,8 @@ button#del-preset-btn.icon-btn.danger{
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: rgba(255, 33, 33, 0.5);
-    color: #ffcaca;
+    background: rgba(255, 80, 80, 0.1);
+    color: #d32f2f;
     border: 1px solid rgba(255, 80, 80, 0.9);
 }
 
@@ -1922,7 +1922,7 @@ body.dark-mode textarea {
 }
 
 body.dark-mode .main-option {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     color: #ddd;
 }
 
@@ -2250,6 +2250,40 @@ body.dark-mode #wi-list-container > div {
     transition: all 0.2s;
 } 
 
+/*============按钮==============*/
+body.dark-mode #save-preset-btn.icon-btn{
+    flex: 1;
+    min-width: 120px;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--btn-color);
+    color: #ffffff;
+    border: 0.7px solid #a9a9a9;
+    
+}
+
+/*==============API模型预设 api预设=================*/
+body.dark-mode #del-preset-btn.icon-btn.danger{
+    flex: 1;
+    min-width: 120px;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(255, 33, 33, 0.5);
+    color: #ffcaca;
+    border: 1px solid rgba(255, 80, 80, 0.9);
+}
+
+
 
 /* ============================================== */
 /* PART 7: 夜间模式下的手机适配（< 640px）      */
@@ -2316,6 +2350,7 @@ body.dark-mode #wi-list-container > div {
     -moz-user-select: none;     /* Firefox */
     -ms-user-select: none;      /* IE/Edge */
     user-select: none;          /* 标准语法 */
+    -webkit-tap-highlight-color: transparent;
 
     /* 禁止 iOS 长按时弹出菜单 (增强) */
     -webkit-touch-callout: none; 
@@ -2960,5 +2995,88 @@ body.dark-mode .sb-battery-icon::after {
     transform-origin: center; /* 从中间向两边展开 */
 }
 
+/*===============API测试===================*/
+/* 状态颜色 */
+.status-pending { color: #d97706; text-align: center; } /* 橙色 */
+.status-success { color: #16a34a; text-align: center; } /* 绿色 */
+.status-failure { color: #dc2626;  text-align: center;} /* 红色 */
+/* 默认状态：灰色 */
+.status-idle {color: #9ca3af; /* 浅灰色 */}
+
+/* 外层容器：竖着排列 (输入框在上，按钮在下) */
+.model-setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+/* 按钮行容器：让两个按钮并排 */
+.api-buttons-row {
+    display: flex;
+    gap: 10px; /* 按钮之间的间距 */
+    width: 100%;
+}
+
+
+/* 通用按钮样式 */
+.api-btn {
+    flex: 1; /* 让两个按钮宽度平分 (50% : 50%) */
+    padding: 11px 16px; /* 上下内边距 */
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    border: 0.7px solid var(--btn-border-color);
+    background: var(--btn-color);
+    color: #333;
+    transition: all 0.2s ease;
+}
+
+/* 主要按钮样式 (拉取模型) - 对应你的 var(--primary-btn-color) */
+.api-btn.primary {
+    background: var(--primary-btn-color, #007bff); /* 如果没有变量，默认蓝色 */
+    color: var(--primary-btn-text, #fff);
+    border: 0.7px solid var(--primary-btn-text, #fff);
+}
+
+/* 状态文字样式 */
+.api-status-text {
+    text-align: center;
+    font-size: 0.9em;
+    min-height: 20px; 
+}
+
+
+/* ==================== */
+/* 深色模式适配 (参考你原本的写法) */
+/* ==================== */
+body.dark-mode #custom-model-select.model-select {
+    background: #2b2b2b;
+    border-color: #444;
+    color: #fff;
+}
+
+body.dark-mode .api-btn {
+flex: 1;
+    min-width: 120px;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--btn-color);
+    color: #ffffff;
+    border: 0.7px solid #a9a9a9;
+}
+
+body.dark-mode .api-btn.primary {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 2px solid var(--primary-btn-text) !important;
+}
 
 

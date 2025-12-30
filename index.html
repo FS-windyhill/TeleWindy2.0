@@ -303,13 +303,30 @@
                         <div class="main-option model-card">
                             <label for="custom-model-select" class="api-label2">模型</label>
 
-                            <div class="model-row">
-                                <div class="model-row" style="flex:1">
-                                    <input type="text" id="custom-model-select" list="model-options" class="model-select" placeholder="手动输入或点击拉取...">
-                                    <datalist id="model-options"></datalist>
+
+                            <!-- 模型设置区域 -->
+                            <div class="model-setting-group">
+                                
+                                <!-- 1. 输入框 (去掉了右边的小图标) -->
+                                <input type="text" id="custom-model-select" list="model-options" class="model-select" placeholder="手动输入或点击拉取...">
+                                <datalist id="model-options"></datalist>
+
+                                <!-- 2. 按钮组 (模仿 Gist 的排版，左右并排) -->
+                                <div class="api-buttons-row">
+                                    <button type="button" id="fetch-models-btn" class="api-btn primary">
+                                        拉取模型
+                                    </button>
+                                    <button type="button" id="test-api-btn" class="api-btn">
+                                        测试 API
+                                    </button>
                                 </div>
-                                <button id="fetch-models-btn" class="fetch-models-btn">拉取模型</button>
+
+                                <!-- 3. 测试结果显示 (放在按钮下面) -->
+                                <div id="test-api-status" class="api-status-text status-idle">- API测试准备就绪 -</div>
+
                             </div>
+
+
                         </div>
                     </div>
                 </div>
