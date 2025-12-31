@@ -1319,6 +1319,7 @@ div#group-custom-url.input-group{
     font-size: 15px;
     font-weight: 600;
     color: #666;
+    background-color: #fff;
     position: relative;
     transition: all 0.3s ease;
     user-select: none;
@@ -1326,7 +1327,7 @@ div#group-custom-url.input-group{
 
 /* 选中状态：彩色便签效果 */
 .tab-item.active {
-    background: rgb(255, 255, 255);
+    background: #F2F2F2;
 }
 
 /* 悬停也有一点反馈 */
