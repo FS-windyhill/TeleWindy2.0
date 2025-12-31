@@ -2151,6 +2151,15 @@ body.dark-mode .settings-sidebar {
     flex-shrink: 0;
 }
 
+body.dark-mode .tab-item {
+    writing-mode: vertical-rl;      /* 关键：文字竖排 */
+    color: #cccccc;
+    background-color: #222222;
+    transition: all 0.25s ease;
+}
+
+
+
 body.dark-mode .tab-item.active {
     background: #3b3b3b;
     color: #fefefe;
