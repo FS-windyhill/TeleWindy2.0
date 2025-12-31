@@ -1883,9 +1883,9 @@ body.dark-mode {
     /* 将你的 night- 变量映射回标准变量名，这样原来的气泡样式就能自动变色 */
     --text-color: #ffffff; 
     --message-bg-user: #ebffa9cc;
-    --message-bg-ai: #272727a6;
+    --message-bg-ai: #353535b8;
     --message-border-user: #99bc67;
-    --message-border-ai: #807e7eb5;
+    --message-border-ai: #6f6f6fb5;
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
     --btn-border-color: #555555;   /* 按钮深色边框 */
