@@ -2,9 +2,9 @@
     --primary-color: #505050;
     --background-color: #ffffff;
     --text-color: #333;
-    --message-bg-user: #d1ffbed8;
-    --message-bg-ai: #ffffffd0;
-    --message-border-user: #b3c5a3;
+    --message-bg-user: #e2ffb3c7;
+    --message-bg-ai: #ffffffc0;
+    --message-border-user: #8eb16f;
     --message-border-ai: #e8e8e8;    
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
@@ -249,23 +249,27 @@ body {
 /* ========= 3. 气泡收紧（文字更密集好看） ========= */
 .message-bubble {
     padding: 8px 12px 10px 12px;        /* 原来12-18 → 9-14 */
-    border-radius: 12px;
+    border-radius: 10px;
     max-width: 100%;
     font-size: 17px;
     line-height: 1.3;        /* 关键！行距从1.6 → 1.42 超清爽 */
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    /* box-shadow: 0 2px 6px rgba(0,0,0,0.08); */
 }
 
 .message-wrapper.user .message-bubble {
     background: var(--message-bg-user);
     border: 0.7px solid var(--message-border-user);
     border-top-right-radius: 3px;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
 }
 
 .message-wrapper.ai .message-bubble {
     background: var(--message-bg-ai);
     border: 1.3px solid var(--message-border-ai);
     border-top-left-radius: 3px;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
 }
 
 /* --- 新增：消息气泡入场动画 --- */
@@ -1878,10 +1882,10 @@ body.dark-mode {
     
     /* 将你的 night- 变量映射回标准变量名，这样原来的气泡样式就能自动变色 */
     --text-color: #ffffff; 
-    --message-bg-user: #d3ff9ed8;
-    --message-bg-ai: #3c3c3cd0;
-    --message-border-user: #88a65d;
-    --message-border-ai: #5b5b5b;
+    --message-bg-user: #ebffa9cc;
+    --message-bg-ai: #272727a6;
+    --message-border-user: #99bc67;
+    --message-border-ai: #807e7eb5;
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
     --btn-border-color: #555555;   /* 按钮深色边框 */
@@ -2044,6 +2048,8 @@ body.dark-mode .input-group textarea:focus {
 body.dark-mode .message-wrapper.user .message-bubble {
     color: #232323; 
     /* 如果气泡内有链接，也要强制变黑，防止看不清 */
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
 }
 body.dark-mode .message-wrapper.user .message-bubble a {
     color: #0044cc; /* 链接用深蓝色，对比度更高 */
@@ -2052,6 +2058,8 @@ body.dark-mode .message-wrapper.user .message-bubble a {
 /* AI 气泡：夜间模式下，气泡是深灰色的，所以文字要用白色 */
 body.dark-mode .message-wrapper.ai .message-bubble {
     color: #ffffff;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
 }
 body.dark-mode .message-wrapper.ai .message-bubble a {
     color: #8ab4f8; /* 链接用浅蓝色 */
