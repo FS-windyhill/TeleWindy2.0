@@ -3008,7 +3008,7 @@ body.dark-mode .sb-battery-icon::after {
 /*===============API测试===================*/
 /* 状态颜色 */
 .status-pending { color: #d97706; text-align: center; } /* 橙色 */
-.status-success { color: #16a34a; text-align: center; } /* 绿色 */
+.status-success { color: rgb(62, 196, 68); text-align: center; } /* 绿色 */
 .status-failure { color: #dc2626;  text-align: center;} /* 红色 */
 /* 默认状态：灰色 */
 .status-idle {color: #9ca3af; /* 浅灰色 */}
