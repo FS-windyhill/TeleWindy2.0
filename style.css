@@ -258,7 +258,7 @@ body {
 
 .message-wrapper.user .message-bubble {
     background: var(--message-bg-user);
-    border: 1.2px solid var(--message-border-user);
+    border: 1.5px solid var(--message-border-user);
     border-top-right-radius: 3px;
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
@@ -3095,6 +3095,7 @@ body.dark-mode .api-btn.primary {
     color: #ffffff;
     border: 2px solid var(--primary-btn-text) !important;
 }
+
 
 
 
