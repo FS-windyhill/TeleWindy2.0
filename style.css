@@ -4,12 +4,12 @@
     --text-color: #333;
     --message-bg-user: #dffdadb8;
     --message-bg-ai: #ffffffaa;
-    --message-border-user: #9dbc81;
+    --message-border-user: #c1db97;
     --message-border-ai: #e8e8e8;    
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
     --primary-btn-color: rgba(241, 241, 255, 0.99);
-    --primary-btn-text: rgb(162, 255, 212);
+    --primary-btn-text: rgb(116, 118, 255);
     --btn-color: #f5f5f5;
     --btn-border-color: #a9a9a9;
 }
@@ -258,7 +258,7 @@ body {
 
 .message-wrapper.user .message-bubble {
     background: var(--message-bg-user);
-    border: 1px solid var(--message-border-user);
+    border: 1.2px solid var(--message-border-user);
     border-top-right-radius: 3px;
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
@@ -266,7 +266,7 @@ body {
 
 .message-wrapper.ai .message-bubble {
     background: var(--message-bg-ai);
-    border: 1.3px solid var(--message-border-ai);
+    border: 1.2px solid var(--message-border-ai);
     border-top-left-radius: 3px;
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
@@ -905,7 +905,7 @@ body {
     padding: 10px;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.15);
-    color: #ffffff;
+    color: var(--primary-btn-text);
     border: 2px solid var(--primary-btn-text) !important;
 }
 
@@ -1884,7 +1884,7 @@ body.dark-mode {
     --text-color: #ffffff; 
     --message-bg-user: #dfffabc2;
     --message-bg-ai: #353535b8;
-    --message-border-user: #9eb583;
+    --message-border-user: #b7d599;
     --message-border-ai: #6f6f6fb5;
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
