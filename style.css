@@ -899,14 +899,14 @@ body {
 }
 
 .wallpaper-option.upload {
-    border: 1px solid var(--primary-btn-text);
     justify-content: center;
-    color: var(--primary-btn-text);;
     font-weight: 500;
     position: relative;
-    background: var(--primary-btn-color);
     padding: 10px;
     border-radius: 10px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 2px solid var(--primary-btn-text) !important;
 }
 
 .wallpaper-option.upload:hover {
@@ -2015,7 +2015,7 @@ body.dark-mode .gist-sync-card {
    夜间模式下改成半透明磨砂质感，文字变白 */
 body.dark-mode .gist-btn.primary,
 body.dark-mode #fetch-models-btn.fetch-models-btn {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
     border: 2px solid var(--primary-btn-text) !important;
 }
@@ -2117,13 +2117,13 @@ body.dark-mode button#main-cancel {
 }
 
 body.dark-mode button#main-confirm {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
     border: 2px solid var(--primary-btn-text);
 }
 
 body.dark-mode button#modal-save {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
     border: 2px solid var(--primary-btn-text);
 }
@@ -2240,7 +2240,7 @@ body.dark-mode .wi-btn.danger {
 }
 
 body.dark-mode .wi-btn.primary {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
     border: 2px solid var(--primary-btn-text) !important;
 }
@@ -2273,15 +2273,14 @@ body.dark-mode #save-preset-btn.icon-btn{
     flex: 1;
     min-width: 120px;
     padding: 11px 16px;
-    border: none;
     border-radius: 10px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: var(--btn-color);
+    background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
-    border: 0.7px solid #a9a9a9;
+    border: 2px solid var(--primary-btn-text) !important;
     
 }
 
@@ -2565,7 +2564,7 @@ body.dark-mode .edit-buttons button {
 }
 
 body.dark-mode .edit-buttons .primary { 
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
     border: 2px solid var(--primary-btn-text) !important;
  }
@@ -3092,7 +3091,7 @@ flex: 1;
 }
 
 body.dark-mode .api-btn.primary {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
     border: 2px solid var(--primary-btn-text) !important;
 }
