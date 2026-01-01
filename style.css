@@ -9,7 +9,7 @@
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
     --primary-btn-color: rgba(241, 241, 255, 0.99);
-    --primary-btn-text: rgb(116, 118, 255);
+    --primary-btn-text: rgb(116, 243, 255);
     --btn-color: #f5f5f5;
     --btn-border-color: #a9a9a9;
 }
@@ -1882,7 +1882,7 @@ body.dark-mode {
     
     /* 将你的 night- 变量映射回标准变量名，这样原来的气泡样式就能自动变色 */
     --text-color: #ffffff; 
-    --message-bg-user: #e3ff85cc;
+    --message-bg-user: #dfffabc2;
     --message-bg-ai: #353535b8;
     --message-border-user: #9eb583;
     --message-border-ai: #6f6f6fb5;
