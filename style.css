@@ -1884,7 +1884,7 @@ body.dark-mode {
     --text-color: #ffffff; 
     --message-bg-user: #dfffabc2;
     --message-bg-ai: #353535b8;
-    --message-border-user: #b7d599;
+    --message-border-user: #ffffff50;
     --message-border-ai: #6f6f6fb5;
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
@@ -3095,5 +3095,6 @@ body.dark-mode .api-btn.primary {
     color: #ffffff;
     border: 2px solid var(--primary-btn-text) !important;
 }
+
 
 
