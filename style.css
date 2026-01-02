@@ -266,7 +266,7 @@ body {
 
 .message-wrapper.ai .message-bubble {
     background: var(--message-bg-ai);
-    border: 1.5px solid var(--message-border-ai);
+    border: 1.2px solid var(--message-border-ai);
     padding: 8px 12px 10px 12px;        /* 原来12-18 → 9-14 */
     border-top-left-radius: 3px;
     backdrop-filter: blur(5px);
