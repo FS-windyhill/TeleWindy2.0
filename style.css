@@ -4,7 +4,7 @@
     --text-color: #333;
     --message-bg-user: #dffdadb8;
     --message-bg-ai: #ffffffaa;
-    --message-border-user: #c1db97;
+    --message-border-user: #e6ffbd96;
     --message-border-ai: #e8e8e8;    
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
@@ -53,7 +53,7 @@ body {
     padding-right: 24px;
     padding-top: calc(12px + env(safe-area-inset-top, 40px));
     padding-bottom: 12px;
-    border-bottom: 1px solid rgba(202, 202, 202, 0.9);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.9);
     text-align: center;
     flex-shrink: 0;
     background: rgba(255, 255, 255, 0.8);
@@ -99,7 +99,7 @@ body {
     flex-shrink: 0;   /* 输入框永远贴底 */
     /* 你原来的毛玻璃样式也保留 */
     padding: 8px 16px;
-    border-top: 1px solid rgba(220,220,220,0.9);
+    border-top: 1px solid rgba(255, 255, 255, 0.9);
     display: flex;
     gap: 9px;
     background: rgba(255, 255, 255, 0.8);
@@ -143,7 +143,7 @@ body {
 
 #send-button {
     padding: 5px 12px;
-    border:1px solid rgba(127, 127, 127, 0.816);
+    border:1px solid rgba(179, 179, 179, 0.816);
     background: rgba(251, 251, 251, 0.5);
     color: rgb(131, 131, 131);
     border-radius: 8px;
@@ -154,7 +154,7 @@ body {
 
 #reroll-footer-btn {
     padding: 5px 12px;
-    border:1px solid rgba(127, 127, 127, 0.816);
+    border:1px solid rgba(179, 179, 179, 0.816);
     cursor: pointer;
     border-radius: 8px;
     font-size: 1em;
@@ -248,7 +248,6 @@ body {
 
 /* ========= 3. 气泡收紧（文字更密集好看） ========= */
 .message-bubble {
-    padding: 8px 12px 10px 12px;        /* 原来12-18 → 9-14 */
     border-radius: 11px;
     max-width: 100%;
     font-size: 17px;
@@ -258,7 +257,8 @@ body {
 
 .message-wrapper.user .message-bubble {
     background: var(--message-bg-user);
-    border: 1.5px solid var(--message-border-user);
+    border: 1.6px solid var(--message-border-user);
+    padding: 7px 12px 10px 12px;        /* 原来12-18 → 9-14 */
     border-top-right-radius: 3px;
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
@@ -266,7 +266,8 @@ body {
 
 .message-wrapper.ai .message-bubble {
     background: var(--message-bg-ai);
-    border: 1.2px solid var(--message-border-ai);
+    border: 1.5px solid var(--message-border-ai);
+    padding: 8px 12px 10px 12px;        /* 原来12-18 → 9-14 */
     border-top-left-radius: 3px;
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
@@ -1882,10 +1883,10 @@ body.dark-mode {
     
     /* 将你的 night- 变量映射回标准变量名，这样原来的气泡样式就能自动变色 */
     --text-color: #ffffff; 
-    --message-bg-user: #dfffabc2;
+    --message-bg-user: #cae79ad9;
     --message-bg-ai: #353535b8;
-    --message-border-user: #ffffff50;
-    --message-border-ai: #6f6f6fb5;
+    --message-border-user: #e1fdb99e;
+    --message-border-ai: #95959595;
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
     --btn-border-color: #555555;   /* 按钮深色边框 */
@@ -3095,7 +3096,5 @@ body.dark-mode .api-btn.primary {
     color: #ffffff;
     border: 2px solid var(--primary-btn-text) !important;
 }
-
-
 
 
