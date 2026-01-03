@@ -257,8 +257,8 @@ body {
 
 .message-wrapper.user .message-bubble {
     background: var(--message-bg-user);
-    border: 1.6px solid var(--message-border-user);
-    padding: 7px 12px 10px 12px;        /* 原来12-18 → 9-14 */
+    border: 1.2px solid var(--message-border-user);
+    padding: 8px 12px 10px 12px;        /* 原来12-18 → 9-14 */
     border-top-right-radius: 3px;
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
@@ -1885,8 +1885,8 @@ body.dark-mode {
     --text-color: #ffffff; 
     --message-bg-user: #cae79ad9;
     --message-bg-ai: #353535b8;
-    --message-border-user: #e1fdb99e;
-    --message-border-ai: #95959570;
+    --message-border-user: #8b9d73ad;
+    --message-border-ai: #565656c2;
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
     --btn-border-color: #555555;   /* 按钮深色边框 */
