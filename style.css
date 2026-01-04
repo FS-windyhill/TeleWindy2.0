@@ -1883,7 +1883,7 @@ body.dark-mode {
     
     /* 将你的 night- 变量映射回标准变量名，这样原来的气泡样式就能自动变色 */
     --text-color: #ffffff; 
-    --message-bg-user: #daf9a7b7;
+    --message-bg-user: #edffcf99;
     --message-bg-ai: #353535b8;
     --message-border-user: #E9EE7Bd5;
     --message-border-ai: #707070a6;
@@ -3096,6 +3096,7 @@ body.dark-mode .api-btn.primary {
     color: #ffffff;
     border: 2px solid var(--primary-btn-text) !important;
 }
+
 
 
 
