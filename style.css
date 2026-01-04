@@ -257,7 +257,7 @@ body {
 
 .message-wrapper.user .message-bubble {
     background: var(--message-bg-user);
-    border: 1.5px solid var(--message-border-user);
+    border: 1.2px solid var(--message-border-user);
     padding: 8px 12px 10px 12px;        /* 原来12-18 → 9-14 */
     border-top-right-radius: 3px;
     backdrop-filter: blur(5px);
@@ -266,7 +266,7 @@ body {
 
 .message-wrapper.ai .message-bubble {
     background: var(--message-bg-ai);
-    border: 1.5px solid var(--message-border-ai);
+    border: 1.2px solid var(--message-border-ai);
     padding: 8px 12px 10px 12px;        /* 原来12-18 → 9-14 */
     border-top-left-radius: 3px;
     backdrop-filter: blur(5px);
@@ -1883,10 +1883,10 @@ body.dark-mode {
     
     /* 将你的 night- 变量映射回标准变量名，这样原来的气泡样式就能自动变色 */
     --text-color: #ffffff; 
-    --message-bg-user: #cae79ad9;
+    --message-bg-user: #daf9a7bf;
     --message-bg-ai: #353535b8;
-    --message-border-user: #edffcf99;
-    --message-border-ai: #60606099;
+    --message-border-user: #9bb377d5;
+    --message-border-ai: #707070a6;
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
     --btn-border-color: #555555;   /* 按钮深色边框 */
@@ -3096,10 +3096,5 @@ body.dark-mode .api-btn.primary {
     color: #ffffff;
     border: 2px solid var(--primary-btn-text) !important;
 }
-
-
-
-
-
 
 
