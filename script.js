@@ -719,7 +719,7 @@ const API = {
                 model: MODEL,
                 system: sysPrompts,
                 messages: [{ role: "user", content: lastUserMsg }],
-                max_tokens: 60000,
+                max_tokens: 32700,
                 temperature: 1.1
             });
         } else if (provider === 'gemini') {
@@ -727,7 +727,7 @@ const API = {
             options.body = JSON.stringify({
                 contents: [{ role: 'user', parts: [{ text: lastUserMsg }] }],
                 system_instruction: { parts: [{ text: sysPrompts }] },
-                generationConfig: { temperature: 1.1, maxOutputTokens: 60000 }
+                generationConfig: { temperature: 1.1, maxOutputTokens: 32700 }
             });
         } else {
             // OpenAI Standard (SiliconFlow, DeepSeek, etc.)
@@ -736,7 +736,7 @@ const API = {
                 model: MODEL,
                 messages: messages,
                 temperature: 1.1,
-                max_tokens: 60000
+                max_tokens: 32700
             });
         }
 
@@ -1922,12 +1922,44 @@ const App = {
     async handleSend(isReroll = false) {
         const contact = STATE.contacts.find(c => c.id === STATE.currentContactId);
         if (!contact) return;
+
         
-        const { API_URL, API_KEY, MODEL } = STATE.settings;
-        if (!API_URL || !API_KEY || !MODEL) {
-            alert('请先点击右上角的设置按钮，配置 API 地址、密钥和模型！');
+        // ★★★ 核心修改逻辑开始 ★★★
+        
+        // 1. 默认使用全局设置
+        let requestSettings = {
+            API_URL: STATE.settings.API_URL,
+            API_KEY: STATE.settings.API_KEY,
+            MODEL:   STATE.settings.MODEL
+        };
+
+        // 2. 检查角色是否绑定了“专属预设”
+        // 只有当联系人有绑定，且预设库里真有这个预设时才覆盖
+        if (contact.linkedPresetName) {
+            const presets = STATE.settings.API_PRESETS || [];
+            const targetPreset = presets.find(p => p.name === contact.linkedPresetName);
+            
+            if (targetPreset) {
+                console.log(`[System] 使用角色专属预设: ${targetPreset.name}`);
+                requestSettings = {
+                    API_URL: targetPreset.url, 
+                    API_KEY: targetPreset.key,
+                    MODEL:   targetPreset.model
+                };
+            } else {
+                console.warn(`[System] 绑定的预设 "${contact.linkedPresetName}" 未找到，已回退到全局设置。`);
+            }
+        }
+
+        // 3. 验证最终使用的配置 (而不是验证 STATE.settings)
+        if (!requestSettings.API_URL || !requestSettings.API_KEY || !requestSettings.MODEL) {
+            alert('API配置缺失！\n请检查全局设置，或者该角色的专属模型预设是否完整。');
             return;
         }
+
+        // ★★★ 核心修改逻辑结束，下面继续原本的逻辑 ★★★         
+        
+        
         let userText = UI.els.input.value.trim();
         const timestamp = formatTimestamp();
         const sysMsg = { role: 'system', content: contact.prompt };
@@ -2021,12 +2053,12 @@ const App = {
         recentHistory.forEach(h => messagesToSend.push(h));
 
         try {
-            const aiText = await API.chat(messagesToSend, STATE.settings);
-            const aiTimestamp = formatTimestamp();
+            // ★★★ 这里的调用参数改了：传入 requestSettings 而不是 STATE.settings ★★★
+            const aiText = await API.chat(messagesToSend, requestSettings);
             
+            const aiTimestamp = formatTimestamp();
             contact.history.push({ role: 'assistant', content: aiText, timestamp: aiTimestamp });
 
-            // ★★★ 核心修复 (Part 1): 获取新消息的索引 ★★★
             const newAiMessageIndex = contact.history.length - 1;
             
             if (STATE.currentContactId !== contact.id) {
@@ -2040,7 +2072,6 @@ const App = {
             await Storage.saveContacts();
             UI.renderContacts(); 
 
-            // ★★★ 核心修复 (Part 2): 将索引传递给 playWaterfall ★★★
             await UI.playWaterfall(aiText, contact.avatar, aiTimestamp, newAiMessageIndex); 
             
             UI.setLoading(false, contact.id);
@@ -2050,6 +2081,7 @@ const App = {
             if (STATE.currentContactId === contact.id) {
                 UI.setLoading(false, contact.id);
                 const errorIndex = contact.history.length > 0 ? contact.history.length - 1 : 0;
+                // 错误提示可以稍微详细点
                 UI.appendMessageBubble(`(发送失败: ${error.message})`, 'ai', contact.avatar, null, errorIndex);
             } else {
                 STATE.typingContactId = null;
@@ -2960,10 +2992,29 @@ const App = {
         const iPrompt = document.getElementById('edit-prompt');
         const preview = document.getElementById('edit-avatar-preview');
         const userPreview = document.getElementById('user-avatar-preview');
+
+
+        const presetSelect = document.getElementById('edit-char-preset');   // ★★★ 新增：获取下拉框元素
+
         if(userPreview) userPreview.src = STATE.settings.USER_AVATAR || 'user.jpg';
 
         // 获取新增的日志区域元素
         const logSection = document.getElementById('log-section');
+
+        // ★★★ 新增：填充预设下拉框选项 ★★★
+        // 1. 清空并添加默认选项
+        presetSelect.innerHTML = '<option value="">-- 跟随全局默认设置 --</option>';
+        // 2. 获取预设列表 (防止为空报错)
+        const presets = STATE.settings.API_PRESETS || []; 
+        // 3. 循环添加选项
+        presets.forEach(p => {
+            const option = document.createElement('option');
+            // 你的预设对象里只有 model，没有 API_PRESETS.model (注意作用域)
+            option.value = p.name; 
+            option.textContent = `${p.name} (${p.model})`; 
+            presetSelect.appendChild(option);
+        });
+
 
         if (id) {
             // === 编辑模式 (在聊天界面打开) ===
@@ -2973,6 +3024,14 @@ const App = {
             iAvatar.value = c.avatar;
             iPrompt.value = c.prompt;
             preview.src = (c.avatar.startsWith('data:') || c.avatar.startsWith('http')) ? c.avatar : '';
+
+            // ★★★ 新增：回显该角色绑定的预设 ★★★
+            // 如果这个角色之前绑定过 linkedPresetName，就选中它
+            if (c.linkedPresetName) {
+                presetSelect.value = c.linkedPresetName;
+            } else {
+                presetSelect.value = ""; // 没绑定就是默认
+            }
             
             // 显示危险区域
             document.getElementById('modal-delete').style.display = 'block';
@@ -2988,6 +3047,9 @@ const App = {
             iAvatar.value = '🙂';
             iPrompt.value = '你是一个...';
             preview.src = '';
+
+            // ★★★ 新增：新建时重置下拉框 ★★★
+            presetSelect.value = "";
             
             // 隐藏危险区域
             document.getElementById('modal-delete').style.display = 'none';
@@ -3005,11 +3067,29 @@ const App = {
         const previewSrc = document.getElementById('edit-avatar-preview').src;
         if(previewSrc.startsWith('data:')) avatar = previewSrc;
 
+        // ★★★ 新增：获取下拉框选中的值 ★★★
+        const linkedPresetName = document.getElementById('edit-char-preset').value;
+
         if (this.editingId) {
             const c = STATE.contacts.find(x => x.id === this.editingId);
-            if (c) { c.name = name; c.avatar = avatar; c.prompt = prompt; }
+            if (c) { 
+                c.name = name; 
+                c.avatar = avatar; 
+                c.prompt = prompt; 
+
+                // ★★★ 保存绑定关系 ★★★
+                c.linkedPresetName = linkedPresetName; 
+            }
         } else {
-            STATE.contacts.push({ id: Date.now().toString(), name, avatar, prompt, history: [] });
+            // ★★★ 新建时也要保存绑定关系 ★★★
+            STATE.contacts.push({ 
+                id: Date.now().toString(), 
+                name, 
+                avatar, 
+                prompt, 
+                history: [],
+                linkedPresetName: linkedPresetName // 保存进去
+            });
         }
         await Storage.saveContacts();
         UI.renderContacts();
@@ -3018,7 +3098,7 @@ const App = {
             const c = STATE.contacts.find(x => x.id === this.editingId);
             UI.renderChatHistory(c);
         }
-    }
+    },
 };
 
 // =========================================

@@ -177,7 +177,22 @@
                 <label>人设 (System Prompt)</label>
                 <textarea id="edit-prompt" rows="5" placeholder="你是一个..."></textarea>
             </div>
-            
+
+            <!-- 角色专属模型选择 -->
+            <div class="input-group">
+                <label>专属模型 (API 预设)</label>
+                
+                <select id="edit-char-preset" class="setting-input">
+                    <option value="">-- 跟随全局默认设置 --</option>
+                    <!-- JS 会在这里自动填充你保存的预设 -->
+                </select>
+                
+                <p class="input-hint">
+                    选择后，该角色将使用此模型聊天。
+                </p>
+            </div>
+
+                        
             <div class="modal-buttons">
                 <button id="modal-cancel">取消</button>
                 <button id="modal-save" class="primary">保存</button>
