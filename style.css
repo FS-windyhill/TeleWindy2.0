@@ -3103,7 +3103,7 @@ body.dark-mode .api-btn.primary {
 
 /* 当消息被隐藏时应用的样式 */
 .message-group.is-hidden {
-    opacity: 0.6; /* 让消息变半透明 */
+    opacity: 0.65; /* 让消息变半透明 */
 }
 
 .message-group.is-hidden .message-bubble {
