@@ -1887,7 +1887,7 @@ body.dark-mode {
     --message-bg-user: #d9f9a7bf;
     --message-bg-ai: #303030b3;
     --message-border-user: #edffcfd1;
-    --message-border-ai: #8f8f8f9e;
+    --message-border-ai: #7d7d7db5;
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
     --btn-border-color: #555555;   /* 按钮深色边框 */
