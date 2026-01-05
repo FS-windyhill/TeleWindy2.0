@@ -532,12 +532,16 @@
     </div>
 
 
-    <!-- 1. 长按上下文菜单 (之前找不到的就是这个！) -->
+    <!-- 1. 长按上下文菜单 -->
     <div id="msg-context-menu" class="msg-context-menu" style="display: none;">
         <div class="menu-backdrop"></div>
         <div class="menu-panel">
             <button data-action="edit">编辑</button>
+
             <button data-action="copy">复制</button>
+            <!-- 新增这一行 -->
+            <button data-action="toggle-hidden" id="btn-toggle-hidden">向ta隐藏</button> 
+            
             <button data-action="delete">删除</button>
             <hr>
             <button data-action="cancel">取消</button>

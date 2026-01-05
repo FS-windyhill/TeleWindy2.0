@@ -1886,7 +1886,7 @@ body.dark-mode {
     --message-bg-user: #daf9a7af;
     --message-bg-ai: #353535b8;
     --message-border-user: #edffcf99;
-    --message-border-ai: #757575af;
+    --message-border-ai: #7d7d7d96;
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
     --btn-border-color: #555555;   /* 按钮深色边框 */
@@ -2510,7 +2510,7 @@ body.dark-mode .menu-panel button:hover {
 
 body.dark-mode .menu-panel button {
     width: 100%;
-    padding: 12px 15px;
+    padding: 12px 7px;
     text-align: center;
     border: none;
     color: #ffffff;
@@ -3099,7 +3099,17 @@ body.dark-mode .api-btn.primary {
 
 
 
+/*=================隐藏消息=======================*/
 
+/* 当消息被隐藏时应用的样式 */
+.message-group.is-hidden {
+    opacity: 0.6; /* 让消息变半透明 */
+}
+
+.message-group.is-hidden .message-bubble {
+    backdrop-filter: none !important; /* 强制移除模糊 */
+    -webkit-backdrop-filter: none !important;
+}
 
 
 

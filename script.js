@@ -1607,6 +1607,14 @@ const UI = {
 
             const group = document.createElement('div');
             group.className = 'message-group';
+
+            // ★★★ 新增：如果消息被标记为隐藏，添加 CSS 类 ★★★
+            // 配合你之前加的 CSS: .message-wrapper.is-hidden { opacity: 0.5; ... }
+            if (msg.isHidden) {
+                group.classList.add('is-hidden'); 
+            }
+            // ★★★ 结束新增 ★★★
+
             group.dataset.msgIndex = historyIndex;
             group.dataset.sender = sender;
 
@@ -1989,18 +1997,17 @@ const App = {
         
         UI.setLoading(true, contact.id);
 
-        const recentHistory = contact.history.filter(m => m.role !== 'system').slice(-30).map(msg => {
-            let content = msg.content || msg;
-            if (msg.role === 'user') {
-                // ★★★ 修正：不要去除时间戳，直接把原汁原味的 content 发给 API ★★★
-                // if(content.startsWith('[')) {
-                //      content = content.replace(/^\[.*?\]\s/, '');
-                // }
-                return { role: 'user', content: content };
-            } else {
-                return { role: 'assistant', content: content };
-            }
-        });
+        const recentHistory = contact.history
+            .filter(m => m.role !== 'system' && !m.isHidden) // ★ 这里加了 && !m.isHidden
+            .slice(-30) // 取最后30条 (注意：是在过滤掉隐藏消息之后再取最后30条)
+            .map(msg => {
+                let content = msg.content || msg;
+                if (msg.role === 'user') {
+                    return { role: 'user', content: content };
+                } else {
+                    return { role: 'assistant', content: content };
+                }
+            });
 
         const worldInfoPrompt = WorldInfoEngine.scan(userText, recentHistory, contact.id, contact.name);
         const messagesToSend = [
@@ -2447,6 +2454,17 @@ const App = {
                 UI.renderChatHistory(currentContact, false, true); 
             }
         }
+        // ★★★ 新增：处理隐藏/显示 ★★★
+        else if (action === 'toggle-hidden') {
+            // 1. 切换状态 (如果原来是 true 变成 false，反之亦然)
+            msgData.isHidden = !msgData.isHidden;
+
+            // 2. 保存数据
+            Storage.saveContacts();
+
+            // 3. 重新渲染 (传入 keepScrollPosition=true，保证不乱跳)
+            UI.renderChatHistory(currentContact, false, true);
+        }
         else if (action === 'copy') {
             // ★★★ 修改：复制逻辑 ★★★
             let contentToCopy = msgData.content;
@@ -2507,6 +2525,26 @@ const App = {
                 this.hideMessageContextMenu();
             });
         }
+
+        // ★★★ 新增：动态修改按钮文字 ★★★
+        const currentContact = STATE.contacts.find(c => c.id === STATE.currentContactId);
+        if (currentContact) {
+            const msg = currentContact.history[msgIndex];
+            // 找到我们在 HTML 里加的那个按钮 (假设你加了 data-action="toggle-hidden")
+            const toggleBtn = menu.querySelector('button[data-action="toggle-hidden"]');
+            
+            if (toggleBtn) {
+                if (msg.isHidden) {
+                    toggleBtn.textContent = "取消隐藏";
+                } else {
+                    toggleBtn.textContent = "向ta隐藏";
+                }
+            }
+        }
+        // ★★★ 结束新增 ★★★
+
+
+
 
         // --- ★★★★★ 核心修改：防误触锁 ★★★★★ ---
         
