@@ -2569,7 +2569,7 @@ const App = {
                 if (msg.isHidden) {
                     toggleBtn.textContent = "取消隐藏";
                 } else {
-                    toggleBtn.textContent = "向ta隐藏";
+                    toggleBtn.textContent = "向Ta隐藏";
                 }
             }
         }
