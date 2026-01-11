@@ -161,6 +161,7 @@ const CONFIG = {
         USER_AVATAR: 'user.jpg',
         GIST_TOKEN: '',
         THEME: 'light',
+        FONT_SIZE: 16, // ★★★ 新增：默认字体大小为16px
         API_PRESETS: [] 
     },
     SYSTEM_PROMPT: `
@@ -1147,17 +1148,45 @@ const UI = {
     },
 
     init() {
+        this.renderContacts(); // 先渲染联系人
+        CloudSync.init();      // 云同步初始化
+        
+        // ★★★ 新增：字体滑块的实时监听（拖动时直接预览，不需要点保存）
+        const slider = document.getElementById('font-size-slider');
+        const label = document.getElementById('font-size-value');
+        if (slider) {
+            slider.addEventListener('input', (e) => {
+                const newSize = e.target.value;
+                // 更新旁边的数字显示
+                if(label) label.textContent = newSize + 'px';
+                // 核心：直接修改 CSS 变量，让页面立刻变大变小
+                document.documentElement.style.setProperty('--app-font-size', newSize + 'px');
+            });
+        }
+
+        // 最后应用所有外观（包括刚才读出来的字体、主题、壁纸）
         this.applyAppearance();
-        this.renderContacts();
-        CloudSync.init();
     },
 
-    applyAppearance() {
-        const { WALLPAPER, THEME } = STATE.settings;
+applyAppearance() {
+        const settings = STATE.settings;
+        
+        // 1. 获取设置（优先读设置，没有则读默认）
+        // 注意：这里全部改回大写 key，和你原来的数据保持一致
+        const WALLPAPER = settings.WALLPAPER || CONFIG.DEFAULT.WALLPAPER;
+        const THEME = settings.THEME || CONFIG.DEFAULT.THEME; 
+        const FONT_SIZE = settings.FONT_SIZE || CONFIG.DEFAULT.FONT_SIZE; // 新增
+
+        // 2. 应用壁纸
+        // 这里就不会报错了，因为上面定义了 const WALLPAPER
         document.body.style.backgroundImage = `url('${WALLPAPER}')`;
+        
         if (WALLPAPER === 'wallpaper.jpg' && THEME !== 'dark') {
             document.body.style.backgroundColor = '#f2f2f2';
         }
+
+        // 3. 应用主题
+        // 这里必须用大写 THEME 判断
         if (THEME === 'dark') {
             document.body.classList.add('dark-mode');
             if(this.els.themeDark) this.els.themeDark.checked = true;
@@ -1165,6 +1194,15 @@ const UI = {
             document.body.classList.remove('dark-mode');
             if(this.els.themeLight) this.els.themeLight.checked = true;
         }
+
+        // 4. ★★★ 应用字体大小 (新增功能)
+        document.documentElement.style.setProperty('--app-font-size', FONT_SIZE + 'px');
+
+        // 同步滑块显示
+        const slider = document.getElementById('font-size-slider');
+        const label = document.getElementById('font-size-value');
+        if (slider) slider.value = FONT_SIZE;
+        if (label) label.textContent = FONT_SIZE + 'px';
     },
 
     async toggleTheme(newTheme) {
@@ -2387,7 +2425,7 @@ const App = {
         }
     },
 
-    async saveSettingsFromUI() {
+async saveSettingsFromUI() {
         let rawUrl = UI.els.settingUrl.value.trim().replace(/\/+$/, '');
         if (!rawUrl.includes('anthropic') && !rawUrl.includes('googleapis')) {
             if (rawUrl.endsWith('/chat/completion')) rawUrl += 's'; 
@@ -2403,6 +2441,7 @@ const App = {
         const tEl = document.getElementById('gist-token');
         if(tEl) s.GIST_TOKEN = tEl.value.trim() || ''; 
 
+        // 处理壁纸
         const wallpaperPreview = document.getElementById('wallpaper-preview-img').src;
         if(wallpaperPreview && wallpaperPreview.startsWith('data:')) {
             s.WALLPAPER = wallpaperPreview;
@@ -2410,6 +2449,17 @@ const App = {
             s.WALLPAPER = 'wallpaper.jpg';
         }
 
+        // ★★★ 修正：保存主题时，必须存入大写的 .THEME
+        const themeDarkBtn = document.getElementById('theme-dark');
+        s.THEME = (themeDarkBtn && themeDarkBtn.checked) ? 'dark' : 'light';
+
+        // ★★★ 新增：保存字体大小，存入大写的 .FONT_SIZE
+        const slider = document.getElementById('font-size-slider');
+        if (slider) {
+            s.FONT_SIZE = parseInt(slider.value, 10);
+        }
+
+        // 保存并应用
         await Storage.saveSettings();
         UI.applyAppearance(); 
         UI.els.mainModal.classList.add('hidden');
