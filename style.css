@@ -69,7 +69,7 @@ body {
 /* 这两部分的样式保持不变，确保文字垂直居中 */
 .app-header h1 {
     margin: 0;
-    font-size: 1.1em;
+    font-size: 1.1rem;
     color: var(--primary-color);
 }
 
@@ -127,7 +127,7 @@ body {
     /* --- 解决问题 2: 字体变小 --- */
     /* textarea 默认不继承父元素字体，需强制继承 */
     font-family: inherit; 
-    font-size: 1em; 
+    font-size: 1rem; 
     line-height: 1.5; /* 设置行高，让文字不拥挤 */
 
     /* --- 解决问题 3: 默认高度太高 --- */
@@ -345,7 +345,7 @@ body {
 /* 正在输入 */
 #typing-status {
     margin: 4px 0 0;
-    font-size: 0.8em;
+    font-size: 0.8rem;
     color: #999;
     min-height: 1.2em;   /* 防止文字变了布局跳动 */
 }
