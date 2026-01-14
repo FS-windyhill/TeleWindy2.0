@@ -1898,8 +1898,8 @@ body.dark-mode {
     --text-color: #ffffff; 
     --message-bg-user: #ffffff5e;
     --message-bg-ai: #3030309e;
-    --message-border-user: #ffffff7f;
-    --message-border-ai: rgba(160, 160, 160, 0.6);
+    --message-border-user: #ffffff70;
+    --message-border-ai: rgba(160, 160, 160, 0.5);
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
     --btn-border-color: #555555;   /* 按钮深色边框 */
