@@ -198,7 +198,7 @@ body {
     align-items: flex-start;
     gap: 5px; /* 稍微加大一点间距更好看 */
     margin-bottom: 12px;
-    max-width: 96%;
+    max-width: 94%;
     
     /* ★★★ 关键修改：默认必须是可见的！去掉 opacity: 0 ★★★ */
     opacity: 1; 
@@ -1897,7 +1897,7 @@ body.dark-mode {
     --text-color: #ffffff; 
     --message-bg-user: #ffffff5e;
     --message-bg-ai: #3030309e;
-    --message-border-user: #ffffffcc;
+    --message-border-user: #ffffffa7;
     --message-border-ai: rgba(160, 160, 160, 0.6);
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
