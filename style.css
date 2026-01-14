@@ -1895,9 +1895,9 @@ body.dark-mode {
     
     /* 将你的 night- 变量映射回标准变量名，这样原来的气泡样式就能自动变色 */
     --text-color: #ffffff; 
-    --message-bg-user: #ffffff96;
+    --message-bg-user: #ffffff5e;
     --message-bg-ai: #3030309e;
-    --message-border-user: #ffffffe6;
+    --message-border-user: #ffffffcc;
     --message-border-ai: rgba(160, 160, 160, 0.6);
     
     --btn-color: #3a3a3a;          /* 按钮深色背景 */
@@ -2059,7 +2059,7 @@ body.dark-mode .input-group textarea:focus {
 
 /* 用户气泡：夜间模式下，气泡是亮绿色的，所以文字要用深色 (#232323) */
 body.dark-mode .message-wrapper.user .message-bubble {
-    color: #222; 
+    color: #ffffff; 
     /* 如果气泡内有链接，也要强制变黑，防止看不清 */
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
