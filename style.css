@@ -3159,9 +3159,15 @@ body.dark-mode .api-btn.primary {
     flex: 1;
 }
 
+body.dark-mode .history-btn {
+    background: var(--btn-color);
+    color: #ffffff;
+    border: 0.7px solid #a9a9a9;
+}
+
 #history-manager-section {
     display: none;
-    border-top: 1px dashed #ccc;
+    border-top: 1px dashed var(--btn-border-color);
     margin-top: 15px;
     padding-top: 5px;
 }
