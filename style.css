@@ -253,7 +253,7 @@ body {
 
 /* ========= 3. 气泡收紧（文字更密集好看） ========= */
 .message-bubble {
-    border-radius: 12px;
+    border-radius: 15px;
     max-width: 100%;
     font-size: 1.0625rem;
     line-height: 1.3;        /* 关键！行距从1.6 → 1.42 超清爽 */
@@ -264,7 +264,7 @@ body {
     background: var(--message-bg-user);
     border: 1.2px solid var(--message-border-user);
     padding: 8px 11px 9px 11px;        /* 原来12-18 → 9-14 */
-    /* border-top-right-radius: 3px; */
+    border-top-right-radius: 3px;
     color: #fff;
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
@@ -274,7 +274,7 @@ body {
     background: var(--message-bg-ai);
     border: 1.2px solid var(--message-border-ai);
     padding: 8px 12px 9px 12px;        /* 原来12-18 → 9-14 */
-    /* border-top-left-radius: 3px; */
+    border-top-left-radius: 3px;
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
 }
