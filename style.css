@@ -253,7 +253,7 @@ body {
 
 /* ========= 3. 气泡收紧（文字更密集好看） ========= */
 .message-bubble {
-    border-radius: 18px;
+    border-radius: 12px;
     max-width: 100%;
     font-size: 1.0625rem;
     line-height: 1.3;        /* 关键！行距从1.6 → 1.42 超清爽 */
@@ -263,7 +263,7 @@ body {
 .message-wrapper.user .message-bubble {
     background: var(--message-bg-user);
     border: 1.2px solid var(--message-border-user);
-    padding: 8px 12px 10px 12px;        /* 原来12-18 → 9-14 */
+    padding: 8px 11px 10px 11px;        /* 原来12-18 → 9-14 */
     /* border-top-right-radius: 3px; */
     color: #fff;
     backdrop-filter: blur(5px);
@@ -1895,7 +1895,7 @@ body.dark-mode {
     
     /* 将你的 night- 变量映射回标准变量名，这样原来的气泡样式就能自动变色 */
     --text-color: #ffffff; 
-    --message-bg-user: #ffffff9c;
+    --message-bg-user: #ffffffab;
     --message-bg-ai: #3030309e;
     --message-border-user: #ffffffe6;
     --message-border-ai: rgba(160, 160, 160, 0.6);
