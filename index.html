@@ -151,15 +151,16 @@
                 <input type="text" id="edit-name" placeholder="例如：AI助手">
             </div>
 
-            <!-- 改成支持本地上传的头像区域 -->
+            <!-- 【修改】：删除了输入URL的文本框，只保留上传和预览 -->
             <div class="input-group avatar-upload-group">
                 <label>角色头像</label>
                 <div class="avatar-preview-wrapper">
+                    <!-- 这里的 src 会在 JS 打开弹窗时被自动替换 -->
                     <img id="edit-avatar-preview" class="avatar-preview" src="./char.jpg" alt="预览">
                     <input type="file" id="edit-avatar-file" accept="image/*" style="display:none;">
                     <button type="button" id="edit-avatar-upload-btn" class="small-btn">上传本地图片</button>
                 </div>
-                <input type="text" id="edit-avatar" placeholder="或输入 Emoji / 图片URL" value="⭐">
+                <!-- 已删除 id="edit-avatar" 的 input -->
             </div>
 
             <!-- 新增：用户自己的头像上传（放在角色头像下面） -->
@@ -196,6 +197,21 @@
             <div class="modal-buttons">
                 <button id="modal-cancel">取消</button>
                 <button id="modal-save" class="primary">保存</button>
+            </div>
+
+            <!-- 聊天记录导入导出区域 (仅在编辑现有角色时显示) -->
+            <div id="history-manager-section" class="input-group">
+                <label>聊天记录管理</label>
+                <div class="history-buttons">
+                    <button id="btn-export-history" class="history-btn">
+                        导出记录
+                    </button>
+                    <button id="btn-import-history" class="history-btn">
+                        导入记录
+                    </button>
+                    <!-- 隐藏的文件上传控件 -->
+                    <input type="file" id="file-import-history" accept=".json">
+                </div>
             </div>
 
 

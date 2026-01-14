@@ -196,7 +196,7 @@ body {
 .message-wrapper {
     display: flex;
     align-items: flex-start;
-    gap: 5px; /* 稍微加大一点间距更好看 */
+    gap: 3px; /* 稍微加大一点间距更好看 */
     margin-bottom: 12px;
     max-width: 93%;
     
@@ -725,7 +725,13 @@ body {
     display: flex;
     justify-content: center;    /* 水平居中 */
     align-items: center;        /* 如果还需要垂直居中也加上这一行 */
-    gap: 12px;                  /* 如果有多个按钮，控制间距 */
+    gap: 10px;                  /* 如果有多个按钮，控制间距 */
+    flex: 1;
+}
+
+/* 让 modal-buttons 里的所有 button 元素都去占据可用空间 */
+.modal-buttons button {
+    flex: 1;
 }
 
 /* 按钮本身的样式保持不变 */
@@ -2581,8 +2587,8 @@ body.dark-mode .edit-buttons .primary {
 /* 上下文日志按钮区域 */
 .log-section {
     display: none;
-    margin: 15px 0px 0px 0px;
-    padding-top: 10px;
+    margin: 5px 0px 0px 0px;
+    padding-top: 5px;
     border-top: 1px dashed var(--btn-border-color);
     border-bottom: 1px dashed var(--btn-border-color);
 }
@@ -3123,4 +3129,45 @@ body.dark-mode .api-btn.primary {
     margin: 3px 0px 0px 5px;
     color: #808080;
 }
+
+
+/* ================================== */
+/*  新增：聊天记录导入导出按钮样式  */
+/* ================================== */
+.history-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.history-btn {
+    /* --- 从 .small-btn 复制过来的基础样式 --- */
+    padding: 10px 15px;  /* 我把左右内边距调小了点，因为按钮多了图标，62px可能太宽了 */
+    font-size: 13px;     /* 字体稍微调大一点点，更清晰 */
+    font-weight: 500;    /* 字体加粗一点点 */
+    background: var(--btn-color);
+    color: #666;        /* 深灰色字体 */
+    border: 0.5px solid #9b9b9b;
+    border-radius: 8px;
+    cursor: pointer;
+    
+    /* --- 为了让图标和文字对齐更好看 --- */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; /* 在图标和文字之间加点空隙 */
+    flex: 1;
+}
+
+#history-manager-section {
+    display: none;
+    border-top: 1px dashed #ccc;
+    margin-top: 15px;
+    padding-top: 5px;
+}
+
+#file-import-history {
+    display: none;
+}
+
 

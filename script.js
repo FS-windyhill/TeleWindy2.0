@@ -2927,6 +2927,137 @@ async saveSettingsFromUI() {
         if(gistRestore) gistRestore.onclick = () => CloudSync.restoreBackup();
         const gistIdInput = document.getElementById('gist-id-input');
         if(gistIdInput) gistIdInput.onchange = (e) => CloudSync.updateGistId(e.target.value);
+
+        // =========================================
+        // ★★★ 新增：导出聊天记录 (调试版) ★★★
+        // =========================================
+        const btnExportHistory = document.getElementById('btn-export-history');
+
+        if (btnExportHistory) {
+            btnExportHistory.addEventListener('click', () => {
+                // --- 调试步骤 1: 检查当前是否有正在编辑的角色 ID ---
+                // 使用 App.editingId 或 this.editingId，取决于你的代码结构
+                const currentEditingId = App.editingId; 
+                
+                if (!currentEditingId) {
+                    alert("导出失败：没有找到当前角色的 ID。请确保弹窗已正确打开。");
+                    console.error("Export Error: this.editingId is", currentEditingId);
+                    return;
+                }
+                console.log("准备导出，角色 ID:", currentEditingId);
+
+                // --- 调试步骤 2: 尝试根据 ID 查找角色 ---
+                const contact = STATE.contacts.find(c => c.id === currentEditingId);
+                if (!contact) {
+                    alert(`导出失败：在数据中找不到 ID 为 ${currentEditingId} 的角色。`);
+                    console.error("Export Error: Contact not found for ID", currentEditingId);
+                    return;
+                }
+                console.log("找到角色:", contact.name);
+
+                try {
+                    // 1. 准备数据 (确保 history 存在，如果不存在则使用空数组)
+                    const historyData = contact.history || [];
+                    const jsonStr = JSON.stringify(historyData, null, 2); // 格式化 JSON
+                    
+                    // 2. 创建下载链接
+                    const blob = new Blob([jsonStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${contact.name}_history_${new Date().toISOString().slice(0,10)}.json`;
+                    
+                    // 3. 触发下载
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // 4. 清理
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    console.log("导出成功！");
+
+                } catch (error) {
+                    alert("导出时发生错误：" + error.message);
+                    console.error("Export processing error:", error);
+                }
+            });
+        }
+
+        // =========================================
+        // ★★★ 最终版：导入聊天记录 (触发文件选择) ★★★
+        // =========================================
+        const btnImportHistory = document.getElementById('btn-import-history');
+        const fileInputHistory = document.getElementById('file-import-history');
+
+        if (btnImportHistory && fileInputHistory) {
+            // 点击“导入”按钮，就去触发隐藏的文件选择框
+            btnImportHistory.addEventListener('click', () => {
+                fileInputHistory.value = ''; // 清空，确保每次都能触发 change 事件
+                fileInputHistory.click();
+            });
+
+            // 当用户选择了文件后
+            fileInputHistory.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // 弹出确认框
+                if (!confirm("⚠️ 警告：导入操作将【完全覆盖】当前角色的所有聊天记录，且无法撤销。\n\n确定要继续吗？")) {
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = async (event) => { // ★★★ 改为 async 异步函数 ★★★
+                    try {
+                        const jsonContent = JSON.parse(event.target.result);
+                        
+                        if (!Array.isArray(jsonContent)) {
+                            throw new Error("文件格式错误：内容必须是JSON数组格式");
+                        }
+
+                        // 找到当前正在编辑的角色
+                        // 使用 this.editingId 或 App.editingId
+                        const contact = STATE.contacts.find(c => c.id === this.editingId);
+                        
+                        if (contact) {
+                            // 1. 覆盖历史记录
+                            contact.history = jsonContent;
+                            
+                            // 2. 保存到数据库
+                            await Storage.saveContacts();
+                            
+                            // 3. 弹出成功提示
+                            alert(`成功为角色 [${contact.name}] 导入 ${jsonContent.length} 条消息！`);
+                            
+                            // ===============================================
+                            // ★★★【关键新增】刷新界面并关闭弹窗 ★★★
+                            // ===============================================
+
+                            // 4. 关闭弹窗
+                            const modal = document.getElementById('modal-overlay');
+                            if (modal) {
+                                modal.classList.add('hidden');
+                            }
+
+                            // 5. 如果当前正在聊天的就是这个角色，则刷新聊天界面
+                            if (STATE.currentContactId === this.editingId) {
+                                // 调用你自己的渲染函数，把更新后的 contact 数据传进去
+                                UI.renderChatHistory(contact); 
+                                // 滚动到底部，显示最新的消息
+                                UI.scrollToBottom();
+                            }
+                        } else {
+                            throw new Error("找不到当前正在编辑的角色，导入失败。");
+                        }
+                    } catch (err) {
+                        alert("导入失败：" + err.message);
+                        console.error("Import Error:", err);
+                    }
+                };
+                reader.readAsText(file);
+            });
+        }
     },
 
     readFile(file) {
@@ -3032,123 +3163,145 @@ async saveSettingsFromUI() {
         };
     },
     
-    openEditModal(id) {
+openEditModal(id) {
         this.editingId = id;
         const modal = document.getElementById('modal-overlay');
         modal.classList.remove('hidden');
+
+        // === 获取元素 ===
         const title = document.getElementById('modal-title');
         const iName = document.getElementById('edit-name');
-        const iAvatar = document.getElementById('edit-avatar');
         const iPrompt = document.getElementById('edit-prompt');
         const preview = document.getElementById('edit-avatar-preview');
         const userPreview = document.getElementById('user-avatar-preview');
+        const presetSelect = document.getElementById('edit-char-preset');
+        
+        // 【保留】：你的日志区域
+        const logSection = document.getElementById('log-section');
+        
+        // 【新增】：聊天记录管理区域 (记得在 HTML 里加上 id="history-manager-section")
+        const historySection = document.getElementById('history-manager-section');
 
-
-        const presetSelect = document.getElementById('edit-char-preset');   // ★★★ 新增：获取下拉框元素
-
+        // 用户头像预览
         if(userPreview) userPreview.src = STATE.settings.USER_AVATAR || 'user.jpg';
 
-        // 获取新增的日志区域元素
-        const logSection = document.getElementById('log-section');
-
-        // ★★★ 新增：填充预设下拉框选项 ★★★
-        // 1. 清空并添加默认选项
+        // === 预设下拉框填充 (保留原逻辑) ===
         presetSelect.innerHTML = '<option value="">-- 跟随全局默认设置 --</option>';
-        // 2. 获取预设列表 (防止为空报错)
         const presets = STATE.settings.API_PRESETS || []; 
-        // 3. 循环添加选项
         presets.forEach(p => {
             const option = document.createElement('option');
-            // 你的预设对象里只有 model，没有 API_PRESETS.model (注意作用域)
             option.value = p.name; 
             option.textContent = `${p.name} (${p.model})`; 
             presetSelect.appendChild(option);
         });
 
-
         if (id) {
-            // === 编辑模式 (在聊天界面打开) ===
+            // ===========================
+            //  编辑模式 (修改现有角色)
+            // ===========================
             const c = STATE.contacts.find(x => x.id === id);
-            title.innerText = '聊天菜单'; // 你说你想改成聊天菜单
-            iName.value = c.name;
-            iAvatar.value = c.avatar;
-            iPrompt.value = c.prompt;
-            preview.src = (c.avatar.startsWith('data:') || c.avatar.startsWith('http')) ? c.avatar : '';
-
-            // ★★★ 新增：回显该角色绑定的预设 ★★★
-            // 如果这个角色之前绑定过 linkedPresetName，就选中它
-            if (c.linkedPresetName) {
-                presetSelect.value = c.linkedPresetName;
-            } else {
-                presetSelect.value = ""; // 没绑定就是默认
-            }
             
-            // 显示危险区域
-            document.getElementById('modal-delete').style.display = 'block';
-            document.getElementById('modal-clear-history').style.display = 'block';
+            title.innerText = '聊天菜单'; // 你的自定义标题
+            iName.value = c.name;
+            iPrompt.value = c.prompt || "";
+            
+            // 【修改】：头像直接给 img src (不再给 input value，因为 input 删了)
+            preview.src = c.avatar || './char.jpg';
 
-            // 【新增】：显示日志按钮
+            // 回显预设
+            presetSelect.value = c.linkedPresetName || "";
+            
+            // 显示危险按钮
+            const btnDelete = document.getElementById('modal-delete');
+            const btnClear = document.getElementById('modal-clear-history');
+            if(btnDelete) btnDelete.style.display = 'block';
+            if(btnClear) btnClear.style.display = 'block';
+
+            // 【保留】：显示日志按钮
             if (logSection) logSection.style.display = 'block';
 
+            // 【新增】：显示导入/导出按钮
+            if (historySection) historySection.style.display = 'block';
+
         } else {
-            // === 新建模式 ===
+            // ===========================
+            //  新建模式 (创建新角色)
+            // ===========================
             title.innerText = '新建角色';
             iName.value = '';
-            iAvatar.value = '🙂';
             iPrompt.value = '你是一个...';
-            preview.src = '';
+            
+            // 【修改】：默认头像
+            preview.src = './char.jpg'; 
 
-            // ★★★ 新增：新建时重置下拉框 ★★★
             presetSelect.value = "";
             
-            // 隐藏危险区域
-            document.getElementById('modal-delete').style.display = 'none';
-            document.getElementById('modal-clear-history').style.display = 'none';
+            // 隐藏危险按钮
+            const btnDelete = document.getElementById('modal-delete');
+            const btnClear = document.getElementById('modal-clear-history');
+            if(btnDelete) btnDelete.style.display = 'none';
+            if(btnClear) btnClear.style.display = 'none';
 
-            // 【新增】：隐藏日志按钮 (新建时没有日志可看)
+            // 【保留】：隐藏日志按钮 (新建时没日志看)
             if (logSection) logSection.style.display = 'none';
+
+            // 【新增】：隐藏导入/导出按钮 (新建时没记录导)
+            if (historySection) historySection.style.display = 'none';
         }
     },
 
     async saveContactFromModal() {
         const name = document.getElementById('edit-name').value.trim() || '未命名';
-        let avatar = document.getElementById('edit-avatar').value.trim();
         const prompt = document.getElementById('edit-prompt').value.trim();
-        const previewSrc = document.getElementById('edit-avatar-preview').src;
-        if(previewSrc.startsWith('data:')) avatar = previewSrc;
+        
+        // 【关键修改】：不再找 edit-avatar 输入框，而是直接拿图片的 src
+        // 这样无论是你上传的本地图片(Base64)，还是网络图片，都在这里面
+        const avatar = document.getElementById('edit-avatar-preview').src;
 
-        // ★★★ 新增：获取下拉框选中的值 ★★★
+        // 【保留】：获取下拉框选中的预设
         const linkedPresetName = document.getElementById('edit-char-preset').value;
 
         if (this.editingId) {
+            // === 更新现有角色 ===
             const c = STATE.contacts.find(x => x.id === this.editingId);
             if (c) { 
                 c.name = name; 
                 c.avatar = avatar; 
                 c.prompt = prompt; 
-
-                // ★★★ 保存绑定关系 ★★★
+                
+                // 保存预设绑定
                 c.linkedPresetName = linkedPresetName; 
             }
         } else {
-            // ★★★ 新建时也要保存绑定关系 ★★★
+            // === 创建新角色 ===
             STATE.contacts.push({ 
                 id: Date.now().toString(), 
                 name, 
                 avatar, 
                 prompt, 
                 history: [],
-                linkedPresetName: linkedPresetName // 保存进去
+                linkedPresetName: linkedPresetName 
             });
         }
+
+        // 保存到数据库
         await Storage.saveContacts();
         UI.renderContacts();
+        
+        // 如果当前正好在聊这个角色，刷新一下界面
         if (STATE.currentContactId === this.editingId) {
             document.getElementById('chat-title').innerText = name;
+            // 如果你想刷新聊天界面的头像，可以加这一句：
+            // document.querySelector('.chat-header-avatar').src = avatar; 
+            
             const c = STATE.contacts.find(x => x.id === this.editingId);
             UI.renderChatHistory(c);
         }
+
+        // 关闭弹窗
+        document.getElementById('modal-overlay').classList.add('hidden');
     },
+    
 };
 
 // =========================================

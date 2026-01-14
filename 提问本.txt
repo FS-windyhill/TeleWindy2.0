@@ -507,13 +507,1115 @@ function cleanMarkdownForCopy(text) {
 
 
 
-老师，这是一个类似sillytavern的AI聊天前端，我写的。我为了让AI感知世间，在user发的每一条消息前面都加了一条时间戳。类似：
+老师，这是一个类似sillytavern的AI聊天前端，我写的。我为了让AI感知时间，在user发的每一条消息前面都加了一条时间戳。类似：
 
 你好啊！吃了吗？→处理后：[Dec.29 20:07]你好啊！吃了吗？
 
 之前他都可以正常工作，后来项目改来改去，今天突然发现这个功能不见了？我发送的消息没有被加上时间戳了？
 
 我渲染聊天界面、复制消息、编辑消息、contact联系人界面预览消息的时候，为了美观，都是用正则把时间戳（在视觉上）切掉的。唯一不同的是，编辑消息的时候，我只会在编辑框里把时间戳去掉（为了让时间戳不让用户看见，不然很不优雅），编辑提交之后还会重新拼回去。但是现在说这些也没用了，因为时间戳甚至都没有被加进上下文里。是啥地方出问题了吗？逻辑太复杂了我都搞不懂是哪里出错了。除了我前面粘贴给你的具体代码，下面是我的目录，有哪些代码是可能的嫌疑段落吗？
+
+
+
+
+
+
+
+
+
+
+
+老师，这是一个类似sillytavern的AI聊天前端，我写的。这个软件要连API嘛，我现在有拉取模型啥的功能了，但是我还想加一个测试API的功能。我另外一个项目写了测试API的功能，但是太久远了我已经忘了我咋写的了，懒得想了。。。。。所以麻烦你帮我把另外一个项目的代码整理进我这个AI聊天项目里吧。
+
+html css啥的单独分开写，你随便写个最简单的，我自己插进我的项目里就OK
+只是原来我那个项目，测试结果是直接显示为文字的，但是我现在想加个测试的按钮。
+然后测试结果放在某一行，我到时候扔某个input外面。
+
+比如【测试API】  测完会显示 已连接！或者 连接失败，代码400（反正就是它返回的错误内容） 这种
+
+
+这是我另外一个项目的测试API
+/* ==================== 测试默认 API ==================== */
+async function testDefaultApi() {
+  const statusEl = apiStatus;
+  if (!statusEl) return;
+
+  statusEl.textContent = '连接中…';
+  statusEl.className = 'status-pending';
+
+  try {
+    const response = await fetch(DEFAULT_API.url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${DEFAULT_API.key}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: DEFAULT_API.model,
+        messages: [{ role: "user", content: "ping" }],
+        max_tokens: 1
+      })
+    });
+
+    if (response.ok) {
+      statusEl.innerHTML = '√ 已连接';
+      statusEl.className = 'status-success';
+      statusEl.title = '默认 API 连接成功';
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
+  } catch (err) {
+    statusEl.innerHTML = '× 连接失败';
+    statusEl.className = 'status-failure';
+    console.error("默认 API 测试失败：", err);
+  }
+}
+
+
+这是我现在这个项目的API功能。
+
+
+
+// =========================================
+// 4. API SERVICE (LLM通信)
+// =========================================
+const API = {
+    getProvider(url) {
+        if (url.includes('anthropic')) return 'claude';
+        if (url.includes('googleapis')) return 'gemini';
+        return 'openai'; 
+    },
+
+    async fetchModels(url, key) {
+        const modelsUrl = url.replace(/\/chat\/completions$/, '/models');
+        const res = await fetch(modelsUrl, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${key}` }
+        });
+        if (!res.ok) throw new Error(`Status: ${res.status}`);
+        return await res.json();
+    },
+
+    // 在 API 类内部添加一个估算 Token 的辅助函数
+// 1. 新增：放在 API 类里面的辅助函数，用来估算 Token
+    estimateTokens(text) {
+        if (!text) return 0;
+        // 简单粗暴的估算公式：
+        // 中文/日文/韩文 (CJK) 算 1.8 个 Token
+        // 英文/数字/符号 算 0.35 个 Token (约3个字母=1Token)
+        const cjkCount = (text.match(/[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/g) || []).length;
+        const otherCount = text.length - cjkCount;
+        return Math.ceil(cjkCount * 1.8 + otherCount * 0.35);
+    },
+
+    async chat(messages, settings) {
+        const { API_URL, API_KEY, MODEL } = settings;
+        const provider = this.getProvider(API_URL);
+        
+        let fetchUrl = API_URL;
+        let options = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        };
+
+        const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.content || '';
+        const sysPrompts = messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+
+        // 构建请求体
+        if (provider === 'claude') {
+            options.headers['x-api-key'] = API_KEY;
+            options.headers['anthropic-version'] = '2023-06-01';
+            options.body = JSON.stringify({
+                model: MODEL,
+                system: sysPrompts,
+                messages: [{ role: "user", content: lastUserMsg }],
+                max_tokens: 60000,
+                temperature: 1.1
+            });
+        } else if (provider === 'gemini') {
+            fetchUrl = API_URL.endsWith(':generateContent') ? API_URL : `${API_URL}/${MODEL}:generateContent?key=${API_KEY}`;
+            options.body = JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: lastUserMsg }] }],
+                system_instruction: { parts: [{ text: sysPrompts }] },
+                generationConfig: { temperature: 1.1, maxOutputTokens: 60000 }
+            });
+        } else {
+            // OpenAI Standard (SiliconFlow, DeepSeek, etc.)
+            options.headers['Authorization'] = `Bearer ${API_KEY}`;
+            options.body = JSON.stringify({
+                model: MODEL,
+                messages: messages,
+                temperature: 1.1,
+                max_tokens: 60000
+            });
+        }
+
+            
+        // ==========================================
+        // 1. 发送前日志记录 (修复版)
+        // ==========================================
+        try {
+            let requestBodyObject = options.body;
+            if (typeof options.body === 'string') {
+                requestBodyObject = JSON.parse(options.body);
+            }
+            
+            console.log(`[${provider}] Sending...`, requestBodyObject);
+
+            // 直接存入全局变量
+            window.LAST_API_LOG = {
+                content: JSON.stringify(requestBodyObject, null, 2),
+                tokens: 0, 
+                isEstimated: true 
+            };
+
+        } catch (error) {
+            console.error("【API日志记录失败】", error);
+        }
+
+        const response = await fetch(fetchUrl, options);
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`API Error ${response.status}: ${errText}`);
+        }
+        
+        const data = await response.json();
+
+        // ==========================================
+        // 2. 发送后：拿到真实 Token (修复版)
+        // ==========================================
+        console.log(`[${provider}] Raw Response:`, data);
+
+        if (data.usage && data.usage.prompt_tokens) {
+            // 完美情况：API 返回了 token
+            if (window.LAST_API_LOG) {
+                window.LAST_API_LOG.tokens = data.usage.prompt_tokens;
+                window.LAST_API_LOG.isEstimated = false;
+            }
+            console.log(`API返回真实Token消耗: ${data.usage.prompt_tokens}`);
+        } else {
+            // 保底情况：API 没返回，我们自己算
+            // ★ 修改点：这里不要用 jsonStr，直接用 window.LAST_API_LOG.content
+            if (window.LAST_API_LOG && window.LAST_API_LOG.content) {
+                window.LAST_API_LOG.tokens = this.estimateTokens(window.LAST_API_LOG.content);
+            }
+        }
+        
+
+        
+        if (provider === 'claude') return data.content[0].text.trim();
+        if (provider === 'gemini') return data.candidates[0].content.parts[0].text.trim();
+        return data.choices[0].message.content.trim();
+    }
+};
+
+// =========================================
+
+
+    async fetchModelsForUI() {
+        const url = UI.els.settingUrl.value.trim();
+        const key = UI.els.settingKey.value.trim();
+        if(!url || !key) return alert('请先填写地址和密钥');
+        const btn = UI.els.fetchBtn;
+        btn.textContent = '获取中...';
+        btn.disabled = true;
+        try {
+            const data = await API.fetchModels(url, key);
+            const datalist = document.getElementById('model-options');
+            if(datalist) datalist.innerHTML = '';
+            if (data.data && Array.isArray(data.data)) {
+                data.data.forEach(m => {
+                    if(datalist) {
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        datalist.appendChild(opt);
+                    }
+                });
+                if (data.data.length > 0) {
+                    UI.els.settingModel.value = data.data[0].id;
+                }
+                alert(`成功拉取 ${data.data.length} 个模型！`);
+            } else {
+                alert('连接成功，但对方没有返回有效的模型列表，请手动输入。');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('拉取失败，请手动输入模型名。');
+        } finally {
+            btn.textContent = '拉取模型';
+            btn.disabled = false;
+        }
+    },
+
+    bindImageUpload(inputId, imgId, inputUrlId, callback) {
+        const el = document.getElementById(inputId);
+        if(!el) return;
+        el.onchange = async (e) => {
+            if(e.target.files[0]) {
+                const base64 = await this.readFile(e.target.files[0]);
+                document.getElementById(imgId).src = base64;
+                if(inputUrlId) document.getElementById(inputUrlId).value = base64;
+                if(callback) callback(base64);
+            }
+        };
+    },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+这是我的前端网页，就是接入API和AI角色扮演的，类似sillytavern，只是比较简单。
+
+
+目前我前端有两个页面，分别是
+1.一进去就是联系人页面
+2.点击联系人可以进入的聊天页面
+
+聊天页面中，我加了一个长按编辑消息的按钮，由此也更改发给ai的上下文。我的消息是一个消息组，user/char发出由两个换行分割的若干句子，UI识别两个换行符，由此将其在界面上切分成多条消息，以达到发送多条消息的视觉效果。但是我编辑消息，只打算编辑整个消息组，不打算编辑被切分后的消息。
+（ps：原先一个消息组在UI上是被切分成多条消息的比如/n/n这样/n/n就是好几条。它在页面上是单独的message-wrapper，但是现在我把它们打包成message-group，这样点击其中拆分后的一条，就可以识别并编辑整组完整消息了）
+
+
+现在的问题：
+1.我想加个像sillytavern那样的隐藏功能，就是在长按菜单里加。隐藏指的是：显示在屏幕上（但长相不一样：透明度更强一点，并取消原先气泡美化的blur，产生视觉差异，告诉用户该条消息已被隐藏），但是不发送给AI上下文。然后再次长按该条消息可以取消隐藏。
+
+.message-wrapper.ai .message-bubble {
+    background: var(--message-bg-ai);
+    border: 1.2px solid var(--message-border-ai);
+    padding: 8px 12px 10px 12px;
+    border-top-left-radius: 3px;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+.message-wrapper.user .message-bubble {
+    background: var(--message-bg-user);
+    border: 1.2px solid var(--message-border-user);
+    padding: 8px 12px 10px 12px;
+    border-top-right-radius: 3px;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+    <!-- 1. 长按上下文菜单 (之前找不到的就是这个！) -->
+    <div id="msg-context-menu" class="msg-context-menu" style="display: none;">
+        <div class="menu-backdrop"></div>
+        <div class="menu-panel">
+            <button data-action="edit">编辑</button>
+            <button data-action="copy">复制</button>
+            <button data-action="delete">删除</button>
+            <hr>
+            <button data-action="cancel">取消</button>
+        </div>
+    </div>
+
+
+
+以下是我的代码目录，你告诉我要检查哪几个函数，我发来给你帮我改改把，谢谢gemini
+
+/*
+// =========================================
+// 中文的树状代码目录
+// =========================================
+// 注意：这是一个树状结构，展示代码的组织架构。每个章节对应代码中的主要部分，每个函数/对象后附带简要描述（这是干啥的）。
+// 
+// - 1. CONFIG & STATE (配置与状态)
+//   - CONFIG: 常量配置对象，包含存储键、默认设置和系统提示等，用于全局配置。
+//     - STORAGE_KEY: 'teleWindy_char_data_v1' // 联系人数据存储键
+//     - SETTINGS_KEY: 'teleWindy_settings_v1' // 设置存储键
+//     - WORLD_INFO_KEY: 'teleWindy_world_info_v2' // 世界信息存储键（升级到v2）
+//     - CHAT_PAGE_SIZE: 15 // 每次加载的聊天条数
+//     - GIST_ID_KEY: 'telewindy-gist-id' // Gist ID存储键
+//     - DEFAULT: 默认配置对象，包括API_URL、MODEL等默认值
+//     - SYSTEM_PROMPT: 系统提示字符串，用于指导AI行为
+//   - STATE: 运行时状态对象，存储动态数据，如联系人列表、当前ID等。
+//     - contacts: [] // 联系人数组
+//     - worldInfoBooks: [] // 世界信息书籍数组
+//     - currentContactId: null // 当前联系人ID
+//     - currentBookId: null // 当前世界信息书籍ID
+//     - settings: {} // 当前设置
+//     - typingContactId: null // 正在输入的联系人ID
+//     - visibleMsgCount: 15 // 当前显示的消息条数
+// 
+// - 1.5. DB UTILS (IndexedDB 简易封装)
+//   - DB: IndexedDB操作对象，提供数据库交互方法。
+//     - dbName: 'TeleWindyDB' // 数据库名称
+//     - storeName: 'store' // 对象存储名称
+//     - version: 1 // 数据库版本
+//     - open(): 打开数据库，返回Promise // 异步打开IndexedDB数据库，处理升级。
+//     - get(key): 获取指定键的值，返回Promise // 从数据库读取数据。
+//     - set(key, value): 设置指定键的值，返回Promise // 向数据库写入数据。
+//     - remove(key): 删除指定键，返回Promise // 从数据库删除数据。
+//     - clear(): 清空存储，返回Promise // 清空整个对象存储。
+//     - exportAll(): 导出所有数据，返回Promise // 使用游标遍历并导出所有键值对。
+// 
+// - 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
+//   - Storage: 存储服务对象，处理数据加载和保存，包括迁移逻辑。
+//     - load(): 加载所有数据，包括设置、联系人和世界信息 // 从IndexedDB或LocalStorage加载数据，进行迁移和默认处理。
+//     - saveContacts(): 保存联系人数据 // 将STATE.contacts保存到IndexedDB。
+//     - saveSettings(): 保存设置数据 // 将STATE.settings保存到IndexedDB。
+//     - saveWorldInfo(): 保存世界信息数据 // 将STATE.worldInfoBooks保存到IndexedDB。
+//     - exportAllForBackup(): 导出所有数据用于备份 // 从DB导出数据，加密Token，返回对象。
+//     - importFromBackup(data): 导入备份数据 // 清空DB，解密Token，写入新数据。
+// 
+// - 3. WORLD INFO ENGINE (世界信息引擎，已修正)
+//   - WorldInfoEngine: 世界信息处理对象，管理导入、导出和扫描。
+//     - importFromST(jsonString, fileName): 从SillyTavern格式导入世界信息 // 解析JSON，创建新书籍条目，兼容旧格式。
+//     - exportToST(book): 导出世界信息到SillyTavern格式 // 将书籍条目转换为JSON字符串。
+//     - scan(userText, history, currentContactId, currentContactName): 扫描上下文触发世界信息 // 检查关键词或常量，返回触发的世界信息内容。
+// 
+// - 4. API SERVICE (LLM通信)
+//   - API: API服务对象，处理模型获取和聊天请求。
+//     - getProvider(url): 根据URL获取提供商类型 // 判断API是Claude、Gemini还是OpenAI。
+//     - fetchModels(url, key): 获取模型列表 // 发送GET请求到/models端点，返回JSON。
+//     - estimateTokens(text): 估算Token数量 // 根据字符类型粗略计算Token消耗。
+//     - chat(messages, settings): 发送聊天请求 // 构建请求体，调用API，处理不同提供商，返回AI响应。
+// 
+// - 5. CLOUD SYNC (云同步，终极混合版 - 含安全防御)
+//   - CloudSync: 云同步对象，处理Gist或自定义服务器备份。
+//     - els: DOM元素对象 // 元素引用集合
+//     - init(): 初始化同步界面 // 恢复保存的模式、URL等，调用toggleMode。
+//     - toggleMode(): 切换同步模式 // 根据选择显示/隐藏URL或Gist ID输入。
+//     - showStatus(msg, isError): 显示状态消息 // 更新状态文本和颜色。
+//     - getAuth(): 获取认证Token或密码 // 从输入或设置读取Token，处理加密。
+//     - _maskToken(token): 混淆Token // 反转并base64编码Token以防扫描。
+//     - _unmaskToken(maskedToken): 解混淆Token // base64解码并反转Token。
+//     - _preparePayload(): 准备上传负载 // 导出数据，混淆Token，添加元信息。
+//     - updateBackup(): 更新备份 // 根据模式调用自定义或Gist上传。
+//     - findBackup(): 查找Gist备份 // 请求Gist列表，匹配描述，更新ID。
+//     - restoreBackup(): 恢复备份 // 确认后从云端拉取数据，调用_safeRestore。
+//     - _safeRestore(data): 安全恢复数据 // 解混淆Token，清空旧数据，导入新数据，处理Quota错误。
+//     - _uploadToCustom(): 上传到自定义服务器 // POST负载到自定义URL，使用密码认证。
+//     - _fetchFromCustom(password): 从自定义服务器拉取 // GET请求，使用密码认证，返回JSON。
+//     - _uploadToGist(): 上传到Gist // POST或PATCH到Gist API，创建或更新备份。
+//     - _fetchFromGist(token): 从Gist拉取 // GET Gist内容，处理截断，返回JSON。
+// 
+// - 6. UI RENDERER (DOM 操作)
+//   - UI: UI渲染对象，处理界面更新和事件。
+//     - els: DOM元素对象 // 元素引用集合
+//     - init(): 初始化UI // 应用外观，渲染联系人，初始化CloudSync。
+//     - applyAppearance(): 应用外观设置 // 设置背景、主题。
+//     - toggleTheme(newTheme): 切换主题 // 更新设置，应用外观。
+//     - switchView(viewName): 切换视图 // 显示/隐藏联系人列表或聊天视图。
+//     - renderContacts(): 渲染联系人列表 // 使用模板克隆填充联系人数据，包括预览和红点。
+//     - renderBookSelect(): 渲染世界书选择下拉 // 填充书籍选项，更新UI。
+//     - updateCurrentBookSettingsUI(): 更新当前书设置UI // 设置书籍绑定角色选择。
+//     - renderWorldInfoList(): 渲染世界信息条目列表 // 填充条目，高亮当前编辑。
+//     - initWorldInfoTab(): 初始化世界信息Tab // 填充角色选择，渲染书籍和列表。
+//     - showEditModal(oldText, onConfirmCallback): 显示编辑弹窗 // 填充旧文本，绑定确认回调。
+//     - removeLatestAiBubbles(): 移除最新AI气泡 // 删除聊天中最后一个AI消息组。
+//     - renderChatHistory(contact, isLoadMore, keepScrollPosition): 渲染聊天历史 // 渲染消息，支持分页加载，控制滚动。
+//     - appendMessageBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex): 添加消息气泡 // 创建并追加气泡到组，支持动画。
+//     - appendSeparator(shouldAnimate): 添加分割线 // 创建并追加分割线，支持动画。
+//     - scrollToBottom(): 滚动到底部 // 将聊天容器滚动到最底。
+//     - setLoading(isLoading, contactId): 设置加载状态 // 更新“正在输入”状态，仅针对当前联系人。
+//     - updateRerollState(contact): 更新重滚按钮状态 // 根据历史启用/禁用重滚按钮。
+//     - playWaterfall(fullText, avatar, timestamp): 播放瀑布式动画 // 逐段渲染AI响应，支持分割线和动画。
+//     - initStatusBar(): 初始化状态栏 // 更新时间、电量显示，绑定事件。
+//     - renderPresetMenu(): 渲染API预设菜单 // 填充预设选项，绑定事件。
+// 
+// - 7. APP CONTROLLER (业务逻辑)
+//   - App: 应用控制器对象，管理事件和逻辑。
+//     - els: DOM元素引用 // 来自UI.els
+//     - init(): 初始化应用 // 加载存储，初始化UI，绑定事件，渲染联系人。
+//     - enterChat(id): 进入聊天 // 设置当前ID，切换视图，渲染历史，更新状态。
+//     - handleSend(isReroll): 处理发送消息 // 构建消息，调用API，渲染响应，处理重滚。
+//     - openSettings(): 打开设置弹窗 // 填充设置值，渲染预设，初始化世界信息Tab。
+//     - switchWorldInfoBook(bookId): 切换世界书 // 更新当前ID，刷新UI。
+//     - bindCurrentBookToChar(charId): 绑定书籍到角色 // 更新书籍characterId，保存。
+//     - loadWorldInfoEntry(uid): 加载世界信息条目 // 填充编辑器输入框，刷新列表。
+//     - saveWorldInfoEntry(): 保存世界信息条目 // 更新或新建条目，保存，刷新UI。
+//     - deleteWorldInfoEntry(): 删除世界信息条目 // 移除条目，保存，清空编辑器，刷新列表。
+//     - clearWorldInfoEditor(): 清空编辑器 // 重置输入框，刷新列表。
+//     - createNewBook(): 创建新书 // 提示名称，添加新书，保存，刷新UI。
+//     - renameCurrentBook(): 重命名当前书 // 提示新名，更新，保存，刷新选择。
+//     - deleteCurrentBook(): 删除当前书 // 确认后移除书，切换到第一本，保存，刷新UI。
+//     - exportCurrentBook(): 导出当前书 // 转换为JSON，下载文件。
+//     - handleImportWorldInfo(file): 处理导入世界信息 // 读取文件，导入新书，保存，刷新UI。
+//     - handleSavePreset(): 保存API预设 // 提示名称，添加预设，保存，刷新菜单。
+//     - handleLoadPreset(index): 加载API预设 // 填充URL、Key、Model。
+//     - handleDeletePreset(): 删除API预设 // 确认后移除预设，保存，刷新菜单。
+//     - saveSettingsFromUI(): 从UI保存设置 // 更新设置，处理URL，保存，应用外观。
+//     - handleMessageAction(action): 处理消息动作 // 根据动作编辑/删除/复制消息，保存，刷新历史。
+//     - hideMessageContextMenu(): 隐藏上下文菜单 // 设置display none，重置索引。
+//     - showMessageContextMenu(msgIndex, rect): 显示上下文菜单 // 设置索引，绑定事件，防误触锁定。
+//     - bindEvents(): 绑定事件 // 绑定所有点击、输入、触摸事件。
+//     - readFile(file): 读取文件为Base64 // 返回Promise，读取DataURL。
+//     - fetchModelsForUI(): 从UI获取模型 // 调用API.fetchModels，填充选项。
+//     - bindImageUpload(inputId, imgId, inputUrlId, callback): 绑定图片上传 // 监听change，读取Base64，更新预览，调用回调。
+//     - openEditModal(id): 打开编辑弹窗 // 设置编辑ID，填充值，显示/隐藏按钮。
+//     - saveContactFromModal(): 从弹窗保存联系人 // 更新或新建联系人，保存，刷新UI。
+// 
+// - 8. UTILS & EXPORTS (工具与启动)
+//   - formatTimestamp(): 格式化时间戳 // 返回如"Dec.26 14:30"的字符串。
+//   - window.exportData(): 全局导出函数 // 异步导出备份JSON文件。
+//   - window.importData(input): 全局导入函数 // 读取文件，确认覆盖，导入数据，处理Quota错误。
+//   - renderer: marked.Renderer对象 // 自定义Markdown渲染器，处理表格。
+//   - parseCustomMarkdown(text): 解析自定义Markdown // 使用marked解析，DOMPurify净化，返回HTML。
+//   - cleanMarkdownForCopy(text): 清洗Markdown为纯文本 // 去除符号，适合复制。
+//   - window.onload: 启动应用 // 调用App.init()。
+*/
+
+
+
+
+
+
+这是我的前端网页，就是接入API和AI角色扮演的，类似sillytavern，只是比较简单。
+
+
+目前我前端有两个页面，分别是
+1.一进去就是联系人页面
+2.点击联系人可以进入的聊天页面
+
+联系人页面左上角有个main modal，其实就是设置，用来设置外观、API、内存等功能。而API中提供保存预设的服务，就是我可以输入好几个模型的URL和KEY，存在本地，我想用哪个模型聊天，就在下拉框里选谁。
+
+联系人页面和聊天页面右上角都有一个人设编辑，我感觉这两个的html是同一个东西，只是【联系人】页面的【人设编辑】隐藏了一些功能，就当作一个创建人设的弹窗，只有上传头像、输入姓名、输入人设功能。但【聊天页面】的人设编辑则是所有功能都展现了，包括删除该联系人、删除聊天记录、查看聊天日志等。
+
+如下：
+    <!-- ======================= -->
+    <!-- 弹窗：编辑/添加角色 -->
+    <!-- ======================= -->
+    <div id="modal-overlay" class="hidden">
+        <div class="modal glass-panel">
+            <h2 id="modal-title">编辑角色</h2>
+            
+            <div class="input-group">
+                <label>名字</label>
+                <input type="text" id="edit-name" placeholder="例如：AI助手">
+            </div>
+
+            <!-- 改成支持本地上传的头像区域 -->
+            <div class="input-group avatar-upload-group">
+                <label>角色头像</label>
+                <div class="avatar-preview-wrapper">
+                    <img id="edit-avatar-preview" class="avatar-preview" src="./char.jpg" alt="预览">
+                    <input type="file" id="edit-avatar-file" accept="image/*" style="display:none;">
+                    <button type="button" id="edit-avatar-upload-btn" class="small-btn">上传本地图片</button>
+                </div>
+                <input type="text" id="edit-avatar" placeholder="或输入 Emoji / 图片URL" value="⭐">
+            </div>
+
+            <!-- 新增：用户自己的头像上传（放在角色头像下面） -->
+            <div class="input-group avatar-upload-group">
+                <label>我的头像（用户头像）</label>
+                <div class="avatar-preview-wrapper">
+                    <img id="user-avatar-preview" class="avatar-preview" src="./user.jpg" alt="预览">
+                    <input type="file" id="user-avatar-file" accept="image/*" style="display:none;">
+                    <button type="button" id="user-avatar-upload-btn" class="small-btn">上传本地图片</button>
+                </div>
+            </div>
+
+
+            <div class="input-group">
+                <label>人设 (System Prompt)</label>
+                <textarea id="edit-prompt" rows="5" placeholder="你是一个..."></textarea>
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="modal-cancel">取消</button>
+                <button id="modal-save" class="primary">保存</button>
+            </div>
+
+
+            <!-- 【新增区域】：上下文日志按钮 -->
+            <div id="log-section" class="input-group log-section">
+                <label>调试信息</label>
+                <button id="btn-show-log" class="small-btn log-show-btn">
+                    查看teleWindy的上轮发送
+                </button>
+            </div>
+
+            
+            <div class="modal-danger-zone">
+                <button id="modal-clear-history" class="danger-btn outline">清空聊天记录</button>
+                <button id="modal-delete" class="danger-btn">【危险操作】删除此角色</button>
+            </div>
+
+        </div>
+    </div>
+
+
+
+                <!-- ====================== 2. 模型 ====================== -->
+                <div class="tab-pane" id="model">
+
+                    <h3 class="section-title">API 与模型设置</h3>
+                    <div class="main-options api-section">
+
+                        <!-- ★★★ 新增：预设管理区域 ★★★ -->
+                        <!-- 这里的 ID 必须和 JS 里对应，不要改 ID，class 可以随便改 -->
+                        <div id="api-preset-container" class="preset-row">
+                            <select id="preset-select" class="setting-input" style="flex:1;">
+                                <option value="">-- 选择 API 预设 --</option>
+                            </select>
+                            <div class="preset-btn-group">
+                                <button id="save-preset-btn" type="button" class="icon-btn">保存</button>
+                                <button id="del-preset-btn" type="button" class="icon-btn danger">删除</button>
+                            </div>
+                        </div>
+                        <!-- ★★★ 结束 ★★★ -->
+
+                        <!-- API 地址 -->
+                        <div class="main-option api-input-card">
+                            <label class="api-label">API 地址，不加v1/chat/completions</label>
+                            <input type="url" id="custom-api-url" class="setting-input" 
+                                placeholder="例如: https://api.openai.com/v1">
+                        </div>
+
+                        <!-- API 密钥 -->
+                        <div class="main-option api-input-card">
+                            <label class="api-label">API 密钥</label>
+                            <input type="password" id="custom-api-key" class="setting-input" 
+                                placeholder="sk-XXXXXXXXXXXXXXXXXXXXXXXX" autocomplete="off">
+                        </div>
+
+                        <!-- 模型选择 -->
+                        <div class="main-option model-card">
+                            <label for="custom-model-select" class="api-label2">模型</label>
+
+
+                            <!-- 模型设置区域 -->
+                            <div class="model-setting-group">
+                                
+                                <!-- 1. 输入框 (去掉了右边的小图标) -->
+                                <input type="text" id="custom-model-select" list="model-options" class="model-select" placeholder="手动输入或点击拉取...">
+                                <datalist id="model-options"></datalist>
+
+                                <!-- 2. 按钮组 (模仿 Gist 的排版，左右并排) -->
+                                <div class="api-buttons-row">
+                                    <button type="button" id="fetch-models-btn" class="api-btn primary">
+                                        拉取模型
+                                    </button>
+                                    <button type="button" id="test-api-btn" class="api-btn">
+                                        测试 API
+                                    </button>
+                                </div>
+
+                                <!-- 3. 测试结果显示 (放在按钮下面) -->
+                                <div id="test-api-status" class="api-status-text status-idle">- API测试准备就绪 -</div>
+
+                            </div>
+
+
+                        </div>
+                    </div>
+                </div>
+
+
+
+
+
+
+现在的问题：
+1.我想在【聊天页面】的联人设编辑中，加入“模型选择”功能，就是一个下拉框，显示预设里我已经保存过的那几个AI模型，第一个选项是默认，就是在main modal里已经选择的那个默认模型。其他选项是预设里保存过的其它模型。比如我全局用的是gemini，但是我觉得用glm-V4.6扮演喜羊羊最贴合人设，那我就可以喜羊羊的“模型选择”里选择我之前在设置里保存过的GLM V4.6了，以后我和喜羊羊聊天都会用这个GLM模型，直到我手动修改它。
+
+
+以下是我的代码目录，你告诉我要检查哪几个函数，我发来给你帮我改改把，谢谢gemini
+
+
+
+/*
+// =========================================
+// 中文的树状代码目录
+// =========================================
+// 注意：这是一个树状结构，展示代码的组织架构。每个章节对应代码中的主要部分，每个函数/对象后附带简要描述（这是干啥的）。
+// 
+// - 1. CONFIG & STATE (配置与状态)
+//   - CONFIG: 常量配置对象，包含存储键、默认设置和系统提示等，用于全局配置。
+//     - STORAGE_KEY: 'teleWindy_char_data_v1' // 联系人数据存储键
+//     - SETTINGS_KEY: 'teleWindy_settings_v1' // 设置存储键
+//     - WORLD_INFO_KEY: 'teleWindy_world_info_v2' // 世界信息存储键（升级到v2）
+//     - CHAT_PAGE_SIZE: 15 // 每次加载的聊天条数
+//     - GIST_ID_KEY: 'telewindy-gist-id' // Gist ID存储键
+//     - DEFAULT: 默认配置对象，包括API_URL、MODEL等默认值
+//     - SYSTEM_PROMPT: 系统提示字符串，用于指导AI行为
+//   - STATE: 运行时状态对象，存储动态数据，如联系人列表、当前ID等。
+//     - contacts: [] // 联系人数组
+//     - worldInfoBooks: [] // 世界信息书籍数组
+//     - currentContactId: null // 当前联系人ID
+//     - currentBookId: null // 当前世界信息书籍ID
+//     - settings: {} // 当前设置
+//     - typingContactId: null // 正在输入的联系人ID
+//     - visibleMsgCount: 15 // 当前显示的消息条数
+// 
+// - 1.5. DB UTILS (IndexedDB 简易封装)
+//   - DB: IndexedDB操作对象，提供数据库交互方法。
+//     - dbName: 'TeleWindyDB' // 数据库名称
+//     - storeName: 'store' // 对象存储名称
+//     - version: 1 // 数据库版本
+//     - open(): 打开数据库，返回Promise // 异步打开IndexedDB数据库，处理升级。
+//     - get(key): 获取指定键的值，返回Promise // 从数据库读取数据。
+//     - set(key, value): 设置指定键的值，返回Promise // 向数据库写入数据。
+//     - remove(key): 删除指定键，返回Promise // 从数据库删除数据。
+//     - clear(): 清空存储，返回Promise // 清空整个对象存储。
+//     - exportAll(): 导出所有数据，返回Promise // 使用游标遍历并导出所有键值对。
+// 
+// - 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
+//   - Storage: 存储服务对象，处理数据加载和保存，包括迁移逻辑。
+//     - load(): 加载所有数据，包括设置、联系人和世界信息 // 从IndexedDB或LocalStorage加载数据，进行迁移和默认处理。
+//     - saveContacts(): 保存联系人数据 // 将STATE.contacts保存到IndexedDB。
+//     - saveSettings(): 保存设置数据 // 将STATE.settings保存到IndexedDB。
+//     - saveWorldInfo(): 保存世界信息数据 // 将STATE.worldInfoBooks保存到IndexedDB。
+//     - exportAllForBackup(): 导出所有数据用于备份 // 从DB导出数据，加密Token，返回对象。
+//     - importFromBackup(data): 导入备份数据 // 清空DB，解密Token，写入新数据。
+// 
+// - 3. WORLD INFO ENGINE (世界信息引擎，已修正)
+//   - WorldInfoEngine: 世界信息处理对象，管理导入、导出和扫描。
+//     - importFromST(jsonString, fileName): 从SillyTavern格式导入世界信息 // 解析JSON，创建新书籍条目，兼容旧格式。
+//     - exportToST(book): 导出世界信息到SillyTavern格式 // 将书籍条目转换为JSON字符串。
+//     - scan(userText, history, currentContactId, currentContactName): 扫描上下文触发世界信息 // 检查关键词或常量，返回触发的世界信息内容。
+// 
+// - 4. API SERVICE (LLM通信)
+//   - API: API服务对象，处理模型获取和聊天请求。
+//     - getProvider(url): 根据URL获取提供商类型 // 判断API是Claude、Gemini还是OpenAI。
+//     - fetchModels(url, key): 获取模型列表 // 发送GET请求到/models端点，返回JSON。
+//     - estimateTokens(text): 估算Token数量 // 根据字符类型粗略计算Token消耗。
+//     - chat(messages, settings): 发送聊天请求 // 构建请求体，调用API，处理不同提供商，返回AI响应。
+// 
+// - 5. CLOUD SYNC (云同步，终极混合版 - 含安全防御)
+//   - CloudSync: 云同步对象，处理Gist或自定义服务器备份。
+//     - els: DOM元素对象 // 元素引用集合
+//     - init(): 初始化同步界面 // 恢复保存的模式、URL等，调用toggleMode。
+//     - toggleMode(): 切换同步模式 // 根据选择显示/隐藏URL或Gist ID输入。
+//     - showStatus(msg, isError): 显示状态消息 // 更新状态文本和颜色。
+//     - getAuth(): 获取认证Token或密码 // 从输入或设置读取Token，处理加密。
+//     - _maskToken(token): 混淆Token // 反转并base64编码Token以防扫描。
+//     - _unmaskToken(maskedToken): 解混淆Token // base64解码并反转Token。
+//     - _preparePayload(): 准备上传负载 // 导出数据，混淆Token，添加元信息。
+//     - updateBackup(): 更新备份 // 根据模式调用自定义或Gist上传。
+//     - findBackup(): 查找Gist备份 // 请求Gist列表，匹配描述，更新ID。
+//     - restoreBackup(): 恢复备份 // 确认后从云端拉取数据，调用_safeRestore。
+//     - _safeRestore(data): 安全恢复数据 // 解混淆Token，清空旧数据，导入新数据，处理Quota错误。
+//     - _uploadToCustom(): 上传到自定义服务器 // POST负载到自定义URL，使用密码认证。
+//     - _fetchFromCustom(password): 从自定义服务器拉取 // GET请求，使用密码认证，返回JSON。
+//     - _uploadToGist(): 上传到Gist // POST或PATCH到Gist API，创建或更新备份。
+//     - _fetchFromGist(token): 从Gist拉取 // GET Gist内容，处理截断，返回JSON。
+// 
+// - 6. UI RENDERER (DOM 操作)
+//   - UI: UI渲染对象，处理界面更新和事件。
+//     - els: DOM元素对象 // 元素引用集合
+//     - init(): 初始化UI // 应用外观，渲染联系人，初始化CloudSync。
+//     - applyAppearance(): 应用外观设置 // 设置背景、主题。
+//     - toggleTheme(newTheme): 切换主题 // 更新设置，应用外观。
+//     - switchView(viewName): 切换视图 // 显示/隐藏联系人列表或聊天视图。
+//     - renderContacts(): 渲染联系人列表 // 使用模板克隆填充联系人数据，包括预览和红点。
+//     - renderBookSelect(): 渲染世界书选择下拉 // 填充书籍选项，更新UI。
+//     - updateCurrentBookSettingsUI(): 更新当前书设置UI // 设置书籍绑定角色选择。
+//     - renderWorldInfoList(): 渲染世界信息条目列表 // 填充条目，高亮当前编辑。
+//     - initWorldInfoTab(): 初始化世界信息Tab // 填充角色选择，渲染书籍和列表。
+//     - showEditModal(oldText, onConfirmCallback): 显示编辑弹窗 // 填充旧文本，绑定确认回调。
+//     - removeLatestAiBubbles(): 移除最新AI气泡 // 删除聊天中最后一个AI消息组。
+//     - renderChatHistory(contact, isLoadMore, keepScrollPosition): 渲染聊天历史 // 渲染消息，支持分页加载，控制滚动。
+//     - appendMessageBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex): 添加消息气泡 // 创建并追加气泡到组，支持动画。
+//     - appendSeparator(shouldAnimate): 添加分割线 // 创建并追加分割线，支持动画。
+//     - scrollToBottom(): 滚动到底部 // 将聊天容器滚动到最底。
+//     - setLoading(isLoading, contactId): 设置加载状态 // 更新“正在输入”状态，仅针对当前联系人。
+//     - updateRerollState(contact): 更新重滚按钮状态 // 根据历史启用/禁用重滚按钮。
+//     - playWaterfall(fullText, avatar, timestamp): 播放瀑布式动画 // 逐段渲染AI响应，支持分割线和动画。
+//     - initStatusBar(): 初始化状态栏 // 更新时间、电量显示，绑定事件。
+//     - renderPresetMenu(): 渲染API预设菜单 // 填充预设选项，绑定事件。
+// 
+// - 7. APP CONTROLLER (业务逻辑)
+//   - App: 应用控制器对象，管理事件和逻辑。
+//     - els: DOM元素引用 // 来自UI.els
+//     - init(): 初始化应用 // 加载存储，初始化UI，绑定事件，渲染联系人。
+//     - enterChat(id): 进入聊天 // 设置当前ID，切换视图，渲染历史，更新状态。
+//     - handleSend(isReroll): 处理发送消息 // 构建消息，调用API，渲染响应，处理重滚。
+//     - openSettings(): 打开设置弹窗 // 填充设置值，渲染预设，初始化世界信息Tab。
+//     - switchWorldInfoBook(bookId): 切换世界书 // 更新当前ID，刷新UI。
+//     - bindCurrentBookToChar(charId): 绑定书籍到角色 // 更新书籍characterId，保存。
+//     - loadWorldInfoEntry(uid): 加载世界信息条目 // 填充编辑器输入框，刷新列表。
+//     - saveWorldInfoEntry(): 保存世界信息条目 // 更新或新建条目，保存，刷新UI。
+//     - deleteWorldInfoEntry(): 删除世界信息条目 // 移除条目，保存，清空编辑器，刷新列表。
+//     - clearWorldInfoEditor(): 清空编辑器 // 重置输入框，刷新列表。
+//     - createNewBook(): 创建新书 // 提示名称，添加新书，保存，刷新UI。
+//     - renameCurrentBook(): 重命名当前书 // 提示新名，更新，保存，刷新选择。
+//     - deleteCurrentBook(): 删除当前书 // 确认后移除书，切换到第一本，保存，刷新UI。
+//     - exportCurrentBook(): 导出当前书 // 转换为JSON，下载文件。
+//     - handleImportWorldInfo(file): 处理导入世界信息 // 读取文件，导入新书，保存，刷新UI。
+//     - handleSavePreset(): 保存API预设 // 提示名称，添加预设，保存，刷新菜单。
+//     - handleLoadPreset(index): 加载API预设 // 填充URL、Key、Model。
+//     - handleDeletePreset(): 删除API预设 // 确认后移除预设，保存，刷新菜单。
+//     - saveSettingsFromUI(): 从UI保存设置 // 更新设置，处理URL，保存，应用外观。
+//     - handleMessageAction(action): 处理消息动作 // 根据动作编辑/删除/复制消息，保存，刷新历史。
+//     - hideMessageContextMenu(): 隐藏上下文菜单 // 设置display none，重置索引。
+//     - showMessageContextMenu(msgIndex, rect): 显示上下文菜单 // 设置索引，绑定事件，防误触锁定。
+//     - bindEvents(): 绑定事件 // 绑定所有点击、输入、触摸事件。
+//     - readFile(file): 读取文件为Base64 // 返回Promise，读取DataURL。
+//     - fetchModelsForUI(): 从UI获取模型 // 调用API.fetchModels，填充选项。
+//     - bindImageUpload(inputId, imgId, inputUrlId, callback): 绑定图片上传 // 监听change，读取Base64，更新预览，调用回调。
+//     - openEditModal(id): 打开编辑弹窗 // 设置编辑ID，填充值，显示/隐藏按钮。
+//     - saveContactFromModal(): 从弹窗保存联系人 // 更新或新建联系人，保存，刷新UI。
+// 
+// - 8. UTILS & EXPORTS (工具与启动)
+//   - formatTimestamp(): 格式化时间戳 // 返回如"Dec.26 14:30"的字符串。
+//   - window.exportData(): 全局导出函数 // 异步导出备份JSON文件。
+//   - window.importData(input): 全局导入函数 // 读取文件，确认覆盖，导入数据，处理Quota错误。
+//   - renderer: marked.Renderer对象 // 自定义Markdown渲染器，处理表格。
+//   - parseCustomMarkdown(text): 解析自定义Markdown // 使用marked解析，DOMPurify净化，返回HTML。
+//   - cleanMarkdownForCopy(text): 清洗Markdown为纯文本 // 去除符号，适合复制。
+//   - window.onload: 启动应用 // 调用App.init()。
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+这是我的前端网页，就是接入API和AI角色扮演的，类似sillytavern，只是比较简单。
+
+
+目前我前端有两个页面，分别是
+1.一进去就是联系人页面
+2.点击联系人可以进入的聊天页面
+
+联系人页面和聊天页面右上角都有一个人设编辑，我感觉这两个的html是同一个东西，只是【联系人】页面的【人设编辑】隐藏了一些功能，就当作一个创建人设的弹窗，只有上传头像、输入姓名、输入人设功能。但【聊天页面】的人设编辑则是所有功能都展现了，包括删除该联系人、删除聊天记录、查看聊天日志等。
+
+如下：
+    <!-- ======================= -->
+    <!-- 弹窗：编辑/添加角色 -->
+    <!-- ======================= -->
+    <div id="modal-overlay" class="hidden">
+        <div class="modal glass-panel">
+            <h2 id="modal-title">编辑角色</h2>
+            
+            <div class="input-group">
+                <label>名字</label>
+                <input type="text" id="edit-name" placeholder="例如：AI助手">
+            </div>
+
+            <!-- 改成支持本地上传的头像区域 -->
+            <div class="input-group avatar-upload-group">
+                <label>角色头像</label>
+                <div class="avatar-preview-wrapper">
+                    <img id="edit-avatar-preview" class="avatar-preview" src="./char.jpg" alt="预览">
+                    <input type="file" id="edit-avatar-file" accept="image/*" style="display:none;">
+                    <button type="button" id="edit-avatar-upload-btn" class="small-btn">上传本地图片</button>
+                </div>
+                <input type="text" id="edit-avatar" placeholder="或输入 Emoji / 图片URL" value="⭐">
+            </div>
+
+            <!-- 新增：用户自己的头像上传（放在角色头像下面） -->
+            <div class="input-group avatar-upload-group">
+                <label>我的头像（用户头像）</label>
+                <div class="avatar-preview-wrapper">
+                    <img id="user-avatar-preview" class="avatar-preview" src="./user.jpg" alt="预览">
+                    <input type="file" id="user-avatar-file" accept="image/*" style="display:none;">
+                    <button type="button" id="user-avatar-upload-btn" class="small-btn">上传本地图片</button>
+                </div>
+            </div>
+
+
+            <div class="input-group">
+                <label>人设 (System Prompt)</label>
+                <textarea id="edit-prompt" rows="5" placeholder="你是一个..."></textarea>
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="modal-cancel">取消</button>
+                <button id="modal-save" class="primary">保存</button>
+            </div>
+
+
+            <!-- 【新增区域】：上下文日志按钮 -->
+            <div id="log-section" class="input-group log-section">
+                <label>调试信息</label>
+                <button id="btn-show-log" class="small-btn log-show-btn">
+                    查看teleWindy的上轮发送
+                </button>
+            </div>
+
+            
+            <div class="modal-danger-zone">
+                <button id="modal-clear-history" class="danger-btn outline">清空聊天记录</button>
+                <button id="modal-delete" class="danger-btn">【危险操作】删除此角色</button>
+            </div>
+
+        </div>
+    </div>
+
+
+
+                <!-- ====================== 2. 模型 ====================== -->
+                <div class="tab-pane" id="model">
+
+                    <h3 class="section-title">API 与模型设置</h3>
+                    <div class="main-options api-section">
+
+                        <!-- ★★★ 新增：预设管理区域 ★★★ -->
+                        <!-- 这里的 ID 必须和 JS 里对应，不要改 ID，class 可以随便改 -->
+                        <div id="api-preset-container" class="preset-row">
+                            <select id="preset-select" class="setting-input" style="flex:1;">
+                                <option value="">-- 选择 API 预设 --</option>
+                            </select>
+                            <div class="preset-btn-group">
+                                <button id="save-preset-btn" type="button" class="icon-btn">保存</button>
+                                <button id="del-preset-btn" type="button" class="icon-btn danger">删除</button>
+                            </div>
+                        </div>
+                        <!-- ★★★ 结束 ★★★ -->
+
+                        <!-- API 地址 -->
+                        <div class="main-option api-input-card">
+                            <label class="api-label">API 地址，不加v1/chat/completions</label>
+                            <input type="url" id="custom-api-url" class="setting-input" 
+                                placeholder="例如: https://api.openai.com/v1">
+                        </div>
+
+                        <!-- API 密钥 -->
+                        <div class="main-option api-input-card">
+                            <label class="api-label">API 密钥</label>
+                            <input type="password" id="custom-api-key" class="setting-input" 
+                                placeholder="sk-XXXXXXXXXXXXXXXXXXXXXXXX" autocomplete="off">
+                        </div>
+
+                        <!-- 模型选择 -->
+                        <div class="main-option model-card">
+                            <label for="custom-model-select" class="api-label2">模型</label>
+
+
+                            <!-- 模型设置区域 -->
+                            <div class="model-setting-group">
+                                
+                                <!-- 1. 输入框 (去掉了右边的小图标) -->
+                                <input type="text" id="custom-model-select" list="model-options" class="model-select" placeholder="手动输入或点击拉取...">
+                                <datalist id="model-options"></datalist>
+
+                                <!-- 2. 按钮组 (模仿 Gist 的排版，左右并排) -->
+                                <div class="api-buttons-row">
+                                    <button type="button" id="fetch-models-btn" class="api-btn primary">
+                                        拉取模型
+                                    </button>
+                                    <button type="button" id="test-api-btn" class="api-btn">
+                                        测试 API
+                                    </button>
+                                </div>
+
+                                <!-- 3. 测试结果显示 (放在按钮下面) -->
+                                <div id="test-api-status" class="api-status-text status-idle">- API测试准备就绪 -</div>
+
+                            </div>
+
+
+                        </div>
+                    </div>
+                </div>
+
+
+
+
+
+
+现在的问题：
+1.我想在【聊天页面】的【人设编辑】中，加入“导入导出聊天记录”功能，就是2个并排按钮，一个是导出聊天记录，一个是导入聊天记录。就是导入导出当前所有聊天记录的json，实现聊天记录的保存和恢复。
+
+我的css大概是这个风格：
+.small-btn {
+    padding: 10px 62px;
+    font-size: 12px;
+    background: #ffffff;
+    color: rgb(82, 82, 82);
+    border: 1px solid var(--btn-border-color);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+#modal-save {
+    background: var(--primary-btn-color);
+    color: var(--primary-btn-text);
+    border: 0.7px solid var(--primary-btn-text);
+}
+
+
+以下是我的代码目录，你告诉我要检查哪几个函数，我发来给你帮我改改把，谢谢gemini
+
+
+
+/*
+// =========================================
+// 中文的树状代码目录
+// =========================================
+// 注意：这是一个树状结构，展示代码的组织架构。每个章节对应代码中的主要部分，每个函数/对象后附带简要描述（这是干啥的）。
+// 
+// - 1. CONFIG & STATE (配置与状态)
+//   - CONFIG: 常量配置对象，包含存储键、默认设置和系统提示等，用于全局配置。
+//     - STORAGE_KEY: 'teleWindy_char_data_v1' // 联系人数据存储键
+//     - SETTINGS_KEY: 'teleWindy_settings_v1' // 设置存储键
+//     - WORLD_INFO_KEY: 'teleWindy_world_info_v2' // 世界信息存储键（升级到v2）
+//     - CHAT_PAGE_SIZE: 15 // 每次加载的聊天条数
+//     - GIST_ID_KEY: 'telewindy-gist-id' // Gist ID存储键
+//     - DEFAULT: 默认配置对象，包括API_URL、MODEL等默认值
+//     - SYSTEM_PROMPT: 系统提示字符串，用于指导AI行为
+//   - STATE: 运行时状态对象，存储动态数据，如联系人列表、当前ID等。
+//     - contacts: [] // 联系人数组
+//     - worldInfoBooks: [] // 世界信息书籍数组
+//     - currentContactId: null // 当前联系人ID
+//     - currentBookId: null // 当前世界信息书籍ID
+//     - settings: {} // 当前设置
+//     - typingContactId: null // 正在输入的联系人ID
+//     - visibleMsgCount: 15 // 当前显示的消息条数
+// 
+// - 1.5. DB UTILS (IndexedDB 简易封装)
+//   - DB: IndexedDB操作对象，提供数据库交互方法。
+//     - dbName: 'TeleWindyDB' // 数据库名称
+//     - storeName: 'store' // 对象存储名称
+//     - version: 1 // 数据库版本
+//     - open(): 打开数据库，返回Promise // 异步打开IndexedDB数据库，处理升级。
+//     - get(key): 获取指定键的值，返回Promise // 从数据库读取数据。
+//     - set(key, value): 设置指定键的值，返回Promise // 向数据库写入数据。
+//     - remove(key): 删除指定键，返回Promise // 从数据库删除数据。
+//     - clear(): 清空存储，返回Promise // 清空整个对象存储。
+//     - exportAll(): 导出所有数据，返回Promise // 使用游标遍历并导出所有键值对。
+// 
+// - 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
+//   - Storage: 存储服务对象，处理数据加载和保存，包括迁移逻辑。
+//     - load(): 加载所有数据，包括设置、联系人和世界信息 // 从IndexedDB或LocalStorage加载数据，进行迁移和默认处理。
+//     - saveContacts(): 保存联系人数据 // 将STATE.contacts保存到IndexedDB。
+//     - saveSettings(): 保存设置数据 // 将STATE.settings保存到IndexedDB。
+//     - saveWorldInfo(): 保存世界信息数据 // 将STATE.worldInfoBooks保存到IndexedDB。
+//     - exportAllForBackup(): 导出所有数据用于备份 // 从DB导出数据，加密Token，返回对象。
+//     - importFromBackup(data): 导入备份数据 // 清空DB，解密Token，写入新数据。
+// 
+// - 3. WORLD INFO ENGINE (世界信息引擎，已修正)
+//   - WorldInfoEngine: 世界信息处理对象，管理导入、导出和扫描。
+//     - importFromST(jsonString, fileName): 从SillyTavern格式导入世界信息 // 解析JSON，创建新书籍条目，兼容旧格式。
+//     - exportToST(book): 导出世界信息到SillyTavern格式 // 将书籍条目转换为JSON字符串。
+//     - scan(userText, history, currentContactId, currentContactName): 扫描上下文触发世界信息 // 检查关键词或常量，返回触发的世界信息内容。
+// 
+// - 4. API SERVICE (LLM通信)
+//   - API: API服务对象，处理模型获取和聊天请求。
+//     - getProvider(url): 根据URL获取提供商类型 // 判断API是Claude、Gemini还是OpenAI。
+//     - fetchModels(url, key): 获取模型列表 // 发送GET请求到/models端点，返回JSON。
+//     - estimateTokens(text): 估算Token数量 // 根据字符类型粗略计算Token消耗。
+//     - chat(messages, settings): 发送聊天请求 // 构建请求体，调用API，处理不同提供商，返回AI响应。
+// 
+// - 5. CLOUD SYNC (云同步，终极混合版 - 含安全防御)
+//   - CloudSync: 云同步对象，处理Gist或自定义服务器备份。
+//     - els: DOM元素对象 // 元素引用集合
+//     - init(): 初始化同步界面 // 恢复保存的模式、URL等，调用toggleMode。
+//     - toggleMode(): 切换同步模式 // 根据选择显示/隐藏URL或Gist ID输入。
+//     - showStatus(msg, isError): 显示状态消息 // 更新状态文本和颜色。
+//     - getAuth(): 获取认证Token或密码 // 从输入或设置读取Token，处理加密。
+//     - _maskToken(token): 混淆Token // 反转并base64编码Token以防扫描。
+//     - _unmaskToken(maskedToken): 解混淆Token // base64解码并反转Token。
+//     - _preparePayload(): 准备上传负载 // 导出数据，混淆Token，添加元信息。
+//     - updateBackup(): 更新备份 // 根据模式调用自定义或Gist上传。
+//     - findBackup(): 查找Gist备份 // 请求Gist列表，匹配描述，更新ID。
+//     - restoreBackup(): 恢复备份 // 确认后从云端拉取数据，调用_safeRestore。
+//     - _safeRestore(data): 安全恢复数据 // 解混淆Token，清空旧数据，导入新数据，处理Quota错误。
+//     - _uploadToCustom(): 上传到自定义服务器 // POST负载到自定义URL，使用密码认证。
+//     - _fetchFromCustom(password): 从自定义服务器拉取 // GET请求，使用密码认证，返回JSON。
+//     - _uploadToGist(): 上传到Gist // POST或PATCH到Gist API，创建或更新备份。
+//     - _fetchFromGist(token): 从Gist拉取 // GET Gist内容，处理截断，返回JSON。
+// 
+// - 6. UI RENDERER (DOM 操作)
+//   - UI: UI渲染对象，处理界面更新和事件。
+//     - els: DOM元素对象 // 元素引用集合
+//     - init(): 初始化UI // 应用外观，渲染联系人，初始化CloudSync。
+//     - applyAppearance(): 应用外观设置 // 设置背景、主题。
+//     - toggleTheme(newTheme): 切换主题 // 更新设置，应用外观。
+//     - switchView(viewName): 切换视图 // 显示/隐藏联系人列表或聊天视图。
+//     - renderContacts(): 渲染联系人列表 // 使用模板克隆填充联系人数据，包括预览和红点。
+//     - renderBookSelect(): 渲染世界书选择下拉 // 填充书籍选项，更新UI。
+//     - updateCurrentBookSettingsUI(): 更新当前书设置UI // 设置书籍绑定角色选择。
+//     - renderWorldInfoList(): 渲染世界信息条目列表 // 填充条目，高亮当前编辑。
+//     - initWorldInfoTab(): 初始化世界信息Tab // 填充角色选择，渲染书籍和列表。
+//     - showEditModal(oldText, onConfirmCallback): 显示编辑弹窗 // 填充旧文本，绑定确认回调。
+//     - removeLatestAiBubbles(): 移除最新AI气泡 // 删除聊天中最后一个AI消息组。
+//     - renderChatHistory(contact, isLoadMore, keepScrollPosition): 渲染聊天历史 // 渲染消息，支持分页加载，控制滚动。
+//     - appendMessageBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex): 添加消息气泡 // 创建并追加气泡到组，支持动画。
+//     - appendSeparator(shouldAnimate): 添加分割线 // 创建并追加分割线，支持动画。
+//     - scrollToBottom(): 滚动到底部 // 将聊天容器滚动到最底。
+//     - setLoading(isLoading, contactId): 设置加载状态 // 更新“正在输入”状态，仅针对当前联系人。
+//     - updateRerollState(contact): 更新重滚按钮状态 // 根据历史启用/禁用重滚按钮。
+//     - playWaterfall(fullText, avatar, timestamp): 播放瀑布式动画 // 逐段渲染AI响应，支持分割线和动画。
+//     - initStatusBar(): 初始化状态栏 // 更新时间、电量显示，绑定事件。
+//     - renderPresetMenu(): 渲染API预设菜单 // 填充预设选项，绑定事件。
+// 
+// - 7. APP CONTROLLER (业务逻辑)
+//   - App: 应用控制器对象，管理事件和逻辑。
+//     - els: DOM元素引用 // 来自UI.els
+//     - init(): 初始化应用 // 加载存储，初始化UI，绑定事件，渲染联系人。
+//     - enterChat(id): 进入聊天 // 设置当前ID，切换视图，渲染历史，更新状态。
+//     - handleSend(isReroll): 处理发送消息 // 构建消息，调用API，渲染响应，处理重滚。
+//     - openSettings(): 打开设置弹窗 // 填充设置值，渲染预设，初始化世界信息Tab。
+//     - switchWorldInfoBook(bookId): 切换世界书 // 更新当前ID，刷新UI。
+//     - bindCurrentBookToChar(charId): 绑定书籍到角色 // 更新书籍characterId，保存。
+//     - loadWorldInfoEntry(uid): 加载世界信息条目 // 填充编辑器输入框，刷新列表。
+//     - saveWorldInfoEntry(): 保存世界信息条目 // 更新或新建条目，保存，刷新UI。
+//     - deleteWorldInfoEntry(): 删除世界信息条目 // 移除条目，保存，清空编辑器，刷新列表。
+//     - clearWorldInfoEditor(): 清空编辑器 // 重置输入框，刷新列表。
+//     - createNewBook(): 创建新书 // 提示名称，添加新书，保存，刷新UI。
+//     - renameCurrentBook(): 重命名当前书 // 提示新名，更新，保存，刷新选择。
+//     - deleteCurrentBook(): 删除当前书 // 确认后移除书，切换到第一本，保存，刷新UI。
+//     - exportCurrentBook(): 导出当前书 // 转换为JSON，下载文件。
+//     - handleImportWorldInfo(file): 处理导入世界信息 // 读取文件，导入新书，保存，刷新UI。
+//     - handleSavePreset(): 保存API预设 // 提示名称，添加预设，保存，刷新菜单。
+//     - handleLoadPreset(index): 加载API预设 // 填充URL、Key、Model。
+//     - handleDeletePreset(): 删除API预设 // 确认后移除预设，保存，刷新菜单。
+//     - saveSettingsFromUI(): 从UI保存设置 // 更新设置，处理URL，保存，应用外观。
+//     - handleMessageAction(action): 处理消息动作 // 根据动作编辑/删除/复制消息，保存，刷新历史。
+//     - hideMessageContextMenu(): 隐藏上下文菜单 // 设置display none，重置索引。
+//     - showMessageContextMenu(msgIndex, rect): 显示上下文菜单 // 设置索引，绑定事件，防误触锁定。
+//     - bindEvents(): 绑定事件 // 绑定所有点击、输入、触摸事件。
+//     - readFile(file): 读取文件为Base64 // 返回Promise，读取DataURL。
+//     - fetchModelsForUI(): 从UI获取模型 // 调用API.fetchModels，填充选项。
+//     - bindImageUpload(inputId, imgId, inputUrlId, callback): 绑定图片上传 // 监听change，读取Base64，更新预览，调用回调。
+//     - openEditModal(id): 打开编辑弹窗 // 设置编辑ID，填充值，显示/隐藏按钮。
+//     - saveContactFromModal(): 从弹窗保存联系人 // 更新或新建联系人，保存，刷新UI。
+// 
+// - 8. UTILS & EXPORTS (工具与启动)
+//   - formatTimestamp(): 格式化时间戳 // 返回如"Dec.26 14:30"的字符串。
+//   - window.exportData(): 全局导出函数 // 异步导出备份JSON文件。
+//   - window.importData(input): 全局导入函数 // 读取文件，确认覆盖，导入数据，处理Quota错误。
+//   - renderer: marked.Renderer对象 // 自定义Markdown渲染器，处理表格。
+//   - parseCustomMarkdown(text): 解析自定义Markdown // 使用marked解析，DOMPurify净化，返回HTML。
+//   - cleanMarkdownForCopy(text): 清洗Markdown为纯文本 // 去除符号，适合复制。
+//   - window.onload: 启动应用 // 调用App.init()。
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
