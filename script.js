@@ -1,146 +1,186 @@
-/*
 // =========================================
-// 中文的树状代码目录
+// 树状代码目录（完整版）
 // =========================================
-// 注意：这是一个树状结构，展示代码的组织架构。每个章节对应代码中的主要部分，每个函数/对象后附带简要描述（这是干啥的）。
-// 
-// - 1. CONFIG & STATE (配置与状态)
-//   - CONFIG: 常量配置对象，包含存储键、默认设置和系统提示等，用于全局配置。
-//     - STORAGE_KEY: 'teleWindy_char_data_v1' // 联系人数据存储键
-//     - SETTINGS_KEY: 'teleWindy_settings_v1' // 设置存储键
-//     - WORLD_INFO_KEY: 'teleWindy_world_info_v2' // 世界信息存储键（升级到v2）
-//     - CHAT_PAGE_SIZE: 15 // 每次加载的聊天条数
-//     - GIST_ID_KEY: 'telewindy-gist-id' // Gist ID存储键
-//     - DEFAULT: 默认配置对象，包括API_URL、MODEL等默认值
-//     - SYSTEM_PROMPT: 系统提示字符串，用于指导AI行为
-//   - STATE: 运行时状态对象，存储动态数据，如联系人列表、当前ID等。
-//     - contacts: [] // 联系人数组
-//     - worldInfoBooks: [] // 世界信息书籍数组
-//     - currentContactId: null // 当前联系人ID
-//     - currentBookId: null // 当前世界信息书籍ID
-//     - settings: {} // 当前设置
-//     - typingContactId: null // 正在输入的联系人ID
-//     - visibleMsgCount: 15 // 当前显示的消息条数
-// 
-// - 1.5. DB UTILS (IndexedDB 简易封装)
-//   - DB: IndexedDB操作对象，提供数据库交互方法。
-//     - dbName: 'TeleWindyDB' // 数据库名称
-//     - storeName: 'store' // 对象存储名称
-//     - version: 1 // 数据库版本
-//     - open(): 打开数据库，返回Promise // 异步打开IndexedDB数据库，处理升级。
-//     - get(key): 获取指定键的值，返回Promise // 从数据库读取数据。
-//     - set(key, value): 设置指定键的值，返回Promise // 向数据库写入数据。
-//     - remove(key): 删除指定键，返回Promise // 从数据库删除数据。
-//     - clear(): 清空存储，返回Promise // 清空整个对象存储。
-//     - exportAll(): 导出所有数据，返回Promise // 使用游标遍历并导出所有键值对。
-// 
-// - 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
-//   - Storage: 存储服务对象，处理数据加载和保存，包括迁移逻辑。
-//     - load(): 加载所有数据，包括设置、联系人和世界信息 // 从IndexedDB或LocalStorage加载数据，进行迁移和默认处理。
-//     - saveContacts(): 保存联系人数据 // 将STATE.contacts保存到IndexedDB。
-//     - saveSettings(): 保存设置数据 // 将STATE.settings保存到IndexedDB。
-//     - saveWorldInfo(): 保存世界信息数据 // 将STATE.worldInfoBooks保存到IndexedDB。
-//     - exportAllForBackup(): 导出所有数据用于备份 // 从DB导出数据，加密Token，返回对象。
-//     - importFromBackup(data): 导入备份数据 // 清空DB，解密Token，写入新数据。
-// 
-// - 3. WORLD INFO ENGINE (世界信息引擎，已修正)
-//   - WorldInfoEngine: 世界信息处理对象，管理导入、导出和扫描。
-//     - importFromST(jsonString, fileName): 从SillyTavern格式导入世界信息 // 解析JSON，创建新书籍条目，兼容旧格式。
-//     - exportToST(book): 导出世界信息到SillyTavern格式 // 将书籍条目转换为JSON字符串。
-//     - scan(userText, history, currentContactId, currentContactName): 扫描上下文触发世界信息 // 检查关键词或常量，返回触发的世界信息内容。
-// 
-// - 4. API SERVICE (LLM通信)
-//   - API: API服务对象，处理模型获取和聊天请求。
-//     - getProvider(url): 根据URL获取提供商类型 // 判断API是Claude、Gemini还是OpenAI。
-//     - fetchModels(url, key): 获取模型列表 // 发送GET请求到/models端点，返回JSON。
-//     - estimateTokens(text): 估算Token数量 // 根据字符类型粗略计算Token消耗。
-//     - chat(messages, settings): 发送聊天请求 // 构建请求体，调用API，处理不同提供商，返回AI响应。
-// 
-// - 5. CLOUD SYNC (云同步，终极混合版 - 含安全防御)
-//   - CloudSync: 云同步对象，处理Gist或自定义服务器备份。
-//     - els: DOM元素对象 // 元素引用集合
-//     - init(): 初始化同步界面 // 恢复保存的模式、URL等，调用toggleMode。
-//     - toggleMode(): 切换同步模式 // 根据选择显示/隐藏URL或Gist ID输入。
-//     - showStatus(msg, isError): 显示状态消息 // 更新状态文本和颜色。
-//     - getAuth(): 获取认证Token或密码 // 从输入或设置读取Token，处理加密。
-//     - _maskToken(token): 混淆Token // 反转并base64编码Token以防扫描。
-//     - _unmaskToken(maskedToken): 解混淆Token // base64解码并反转Token。
-//     - _preparePayload(): 准备上传负载 // 导出数据，混淆Token，添加元信息。
-//     - updateBackup(): 更新备份 // 根据模式调用自定义或Gist上传。
-//     - findBackup(): 查找Gist备份 // 请求Gist列表，匹配描述，更新ID。
-//     - restoreBackup(): 恢复备份 // 确认后从云端拉取数据，调用_safeRestore。
-//     - _safeRestore(data): 安全恢复数据 // 解混淆Token，清空旧数据，导入新数据，处理Quota错误。
-//     - _uploadToCustom(): 上传到自定义服务器 // POST负载到自定义URL，使用密码认证。
-//     - _fetchFromCustom(password): 从自定义服务器拉取 // GET请求，使用密码认证，返回JSON。
-//     - _uploadToGist(): 上传到Gist // POST或PATCH到Gist API，创建或更新备份。
-//     - _fetchFromGist(token): 从Gist拉取 // GET Gist内容，处理截断，返回JSON。
-// 
-// - 6. UI RENDERER (DOM 操作)
-//   - UI: UI渲染对象，处理界面更新和事件。
-//     - els: DOM元素对象 // 元素引用集合
-//     - init(): 初始化UI // 应用外观，渲染联系人，初始化CloudSync。
-//     - applyAppearance(): 应用外观设置 // 设置背景、主题。
-//     - toggleTheme(newTheme): 切换主题 // 更新设置，应用外观。
-//     - switchView(viewName): 切换视图 // 显示/隐藏联系人列表或聊天视图。
-//     - renderContacts(): 渲染联系人列表 // 使用模板克隆填充联系人数据，包括预览和红点。
-//     - renderBookSelect(): 渲染世界书选择下拉 // 填充书籍选项，更新UI。
-//     - updateCurrentBookSettingsUI(): 更新当前书设置UI // 设置书籍绑定角色选择。
-//     - renderWorldInfoList(): 渲染世界信息条目列表 // 填充条目，高亮当前编辑。
-//     - initWorldInfoTab(): 初始化世界信息Tab // 填充角色选择，渲染书籍和列表。
-//     - showEditModal(oldText, onConfirmCallback): 显示编辑弹窗 // 填充旧文本，绑定确认回调。
-//     - removeLatestAiBubbles(): 移除最新AI气泡 // 删除聊天中最后一个AI消息组。
-//     - renderChatHistory(contact, isLoadMore, keepScrollPosition): 渲染聊天历史 // 渲染消息，支持分页加载，控制滚动。
-//     - appendMessageBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex): 添加消息气泡 // 创建并追加气泡到组，支持动画。
-//     - appendSeparator(shouldAnimate): 添加分割线 // 创建并追加分割线，支持动画。
-//     - scrollToBottom(): 滚动到底部 // 将聊天容器滚动到最底。
-//     - setLoading(isLoading, contactId): 设置加载状态 // 更新“正在输入”状态，仅针对当前联系人。
-//     - updateRerollState(contact): 更新重滚按钮状态 // 根据历史启用/禁用重滚按钮。
-//     - playWaterfall(fullText, avatar, timestamp): 播放瀑布式动画 // 逐段渲染AI响应，支持分割线和动画。
-//     - initStatusBar(): 初始化状态栏 // 更新时间、电量显示，绑定事件。
-//     - renderPresetMenu(): 渲染API预设菜单 // 填充预设选项，绑定事件。
-// 
-// - 7. APP CONTROLLER (业务逻辑)
-//   - App: 应用控制器对象，管理事件和逻辑。
-//     - els: DOM元素引用 // 来自UI.els
-//     - init(): 初始化应用 // 加载存储，初始化UI，绑定事件，渲染联系人。
-//     - enterChat(id): 进入聊天 // 设置当前ID，切换视图，渲染历史，更新状态。
-//     - handleSend(isReroll): 处理发送消息 // 构建消息，调用API，渲染响应，处理重滚。
-//     - openSettings(): 打开设置弹窗 // 填充设置值，渲染预设，初始化世界信息Tab。
-//     - switchWorldInfoBook(bookId): 切换世界书 // 更新当前ID，刷新UI。
-//     - bindCurrentBookToChar(charId): 绑定书籍到角色 // 更新书籍characterId，保存。
-//     - loadWorldInfoEntry(uid): 加载世界信息条目 // 填充编辑器输入框，刷新列表。
-//     - saveWorldInfoEntry(): 保存世界信息条目 // 更新或新建条目，保存，刷新UI。
-//     - deleteWorldInfoEntry(): 删除世界信息条目 // 移除条目，保存，清空编辑器，刷新列表。
-//     - clearWorldInfoEditor(): 清空编辑器 // 重置输入框，刷新列表。
-//     - createNewBook(): 创建新书 // 提示名称，添加新书，保存，刷新UI。
-//     - renameCurrentBook(): 重命名当前书 // 提示新名，更新，保存，刷新选择。
-//     - deleteCurrentBook(): 删除当前书 // 确认后移除书，切换到第一本，保存，刷新UI。
-//     - exportCurrentBook(): 导出当前书 // 转换为JSON，下载文件。
-//     - handleImportWorldInfo(file): 处理导入世界信息 // 读取文件，导入新书，保存，刷新UI。
-//     - handleSavePreset(): 保存API预设 // 提示名称，添加预设，保存，刷新菜单。
-//     - handleLoadPreset(index): 加载API预设 // 填充URL、Key、Model。
-//     - handleDeletePreset(): 删除API预设 // 确认后移除预设，保存，刷新菜单。
-//     - saveSettingsFromUI(): 从UI保存设置 // 更新设置，处理URL，保存，应用外观。
-//     - handleMessageAction(action): 处理消息动作 // 根据动作编辑/删除/复制消息，保存，刷新历史。
-//     - hideMessageContextMenu(): 隐藏上下文菜单 // 设置display none，重置索引。
-//     - showMessageContextMenu(msgIndex, rect): 显示上下文菜单 // 设置索引，绑定事件，防误触锁定。
-//     - bindEvents(): 绑定事件 // 绑定所有点击、输入、触摸事件。
-//     - readFile(file): 读取文件为Base64 // 返回Promise，读取DataURL。
-//     - fetchModelsForUI(): 从UI获取模型 // 调用API.fetchModels，填充选项。
-//     - bindImageUpload(inputId, imgId, inputUrlId, callback): 绑定图片上传 // 监听change，读取Base64，更新预览，调用回调。
-//     - openEditModal(id): 打开编辑弹窗 // 设置编辑ID，填充值，显示/隐藏按钮。
-//     - saveContactFromModal(): 从弹窗保存联系人 // 更新或新建联系人，保存，刷新UI。
-// 
-// - 8. UTILS & EXPORTS (工具与启动)
-//   - formatTimestamp(): 格式化时间戳 // 返回如"Dec.26 14:30"的字符串。
-//   - window.exportData(): 全局导出函数 // 异步导出备份JSON文件。
-//   - window.importData(input): 全局导入函数 // 读取文件，确认覆盖，导入数据，处理Quota错误。
-//   - renderer: marked.Renderer对象 // 自定义Markdown渲染器，处理表格。
-//   - parseCustomMarkdown(text): 解析自定义Markdown // 使用marked解析，DOMPurify净化，返回HTML。
-//   - cleanMarkdownForCopy(text): 清洗Markdown为纯文本 // 去除符号，适合复制。
-//   - window.onload: 启动应用 // 调用App.init()。
-*/
+// 本目录基于代码结构组织，包含所有章节、对象、属性和函数。
+// 每个函数后附简要描述：这是用于干什么的。
+// 注意：属性（如常量）仅列出，不附描述；函数则说明作用。
 
+// 1. CONFIG & STATE (配置与状态)
+//   - CONFIG: 配置常量对象
+//     - STORAGE_KEY: 'teleWindy_char_data_v1' 
+//     - SETTINGS_KEY: 'teleWindy_settings_v1' 
+//     - WORLD_INFO_KEY: 'teleWindy_world_info_v2' 
+//     - CHAT_PAGE_SIZE: 15 
+//     - GIST_ID_KEY: 'telewindy-gist-id' 
+//     - DEFAULT: 默认配置子对象
+//       - API_URL: 'https://api.siliconflow.cn/v1/chat/completions' 
+//       - MODEL: 'zai-org/GLM-4.6' 
+//       - API_KEY: '' 
+//       - WALLPAPER: 'wallpaper.jpg' 
+//       - USER_AVATAR: 'user.jpg' 
+//       - GIST_TOKEN: '' 
+//       - THEME: 'light' 
+//       - FONT_SIZE: 16 
+//       - API_PRESETS: [] 
+//     - SYSTEM_PROMPT: 系统提示字符串（角色代入指导）
+//   - STATE: 运行时状态对象
+//     - contacts: [] 
+//     - worldInfoBooks: [] 
+//     - currentContactId: null 
+//     - currentBookId: null 
+//     - settings: {} 
+//     - typingContactId: null 
+//     - visibleMsgCount: 15 
+
+// 1.5. DB UTILS (IndexedDB 简易封装)
+//   - DB: IndexedDB 操作对象
+//     - dbName: 'TeleWindyDB' 
+//     - storeName: 'store' 
+//     - version: 1 
+//     - open(): 打开数据库，返回Promise，处理升级和成功/错误事件。这是用于建立IndexedDB连接的函数。
+//     - get(key): 获取指定键的值，返回Promise。这是用于从数据库读取数据的函数。
+//     - set(key, value): 设置指定键的值，返回Promise。这是用于向数据库写入数据的函数。
+//     - remove(key): 删除指定键，返回Promise。这是用于从数据库删除数据的函数。
+//     - clear(): 清空整个存储，返回Promise。这是用于清空数据库所有数据的函数。
+//     - exportAll(): 导出所有数据，使用游标遍历，返回Promise。这是用于备份整个数据库的函数。
+
+// 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
+//   - Storage: 本地存储服务对象
+//     - load(): 初始化加载数据，包括设置、联系人和世界书，支持数据迁移。这是用于从数据库加载所有状态的函数。
+//     - saveContacts(): 保存联系人数据。这是用于持久化联系人数组的函数。
+//     - saveSettings(): 保存设置数据。这是用于持久化设置对象的函数。
+//     - saveWorldInfo(): 保存世界书数据。这是用于持久化世界书数组的函数。
+//     - exportAllForBackup(): 导出所有数据用于备份，处理Token加密。这是用于准备备份数据的函数。
+//     - importFromBackup(data): 从备份导入数据，包括清空数据库和解密Token。这是用于恢复备份数据的函数。
+
+// 3. WORLD INFO ENGINE (已修正)
+//   - WorldInfoEngine: 世界信息引擎对象
+//     - importFromST(jsonString, fileName): 从ST格式导入条目，创建新书。这是用于导入世界信息JSON的函数。
+//     - exportToST(book): 导出书到ST格式JSON。这是用于导出世界信息为JSON的函数。
+//     - scan(userText, history, currentContactId, currentContactName): 扫描上下文触发世界信息，返回触发的提示。这是用于在聊天中注入世界知识的函数。
+
+// 4. API SERVICE (LLM通信)
+//   - API: API服务对象
+//     - getProvider(url): 根据URL判断提供商（如claude、gemini、openai）。这是用于识别API提供商的函数。
+//     - fetchModels(url, key): 获取模型列表。这是用于从API拉取可用模型的函数。
+//     - estimateTokens(text): 估算文本的Token数。这是用于粗略计算Token消耗的函数。
+//     - testConnection(url, key, model): 测试API连接，使用最小消息。这是用于验证API是否可达的函数。
+//     - chat(messages, settings): 发送聊天请求，返回AI响应。这是用于与LLM通信的核心函数。
+
+// 5. CLOUD SYNC (终极混合版 - 含安全防御)
+//   - CloudSync: 云同步对象
+//     - els: DOM元素引用对象
+//       - provider 
+//       - urlInput 
+//       - gistIdInput 
+//       - token 
+//       - status 
+//       - groupUrl 
+//       - groupGistId 
+//       - authLabel 
+//     - init(): 初始化云同步UI，恢复保存的状态。这是用于设置初始云同步界面的函数。
+//     - toggleMode(): 切换同步模式（custom/gist），更新UI。这是用于切换云提供商的函数。
+//     - showStatus(msg, isError): 显示状态消息。这是用于更新UI状态的函数。
+//     - getAuth(): 获取认证Token，支持加密兼容。这是用于安全获取密码的函数。
+//     - _maskToken(token): 混淆Token。这是用于加密Token的内部函数。
+//     - _unmaskToken(maskedToken): 解混淆Token。这是用于解密Token的内部函数。
+//     - _preparePayload(): 准备上传数据，包括混淆Token。这是用于构建备份负载的函数。
+//     - updateBackup(): 更新备份，根据模式调用上传。这是用于执行云备份的函数。
+//     - findBackup(): 查找GitHub上的备份Gist。这是用于自动搜索备份的函数。
+//     - restoreBackup(): 从云端恢复备份。这是用于执行云恢复的函数。
+//     - _safeRestore(data): 安全恢复数据，包括解密和清空。这是用于处理恢复逻辑的内部函数。
+//     - _uploadToCustom(): 上传到自定义服务器。这是用于自定义云上传的内部函数。
+//     - _fetchFromCustom(password): 从自定义服务器拉取。这是用于自定义云下载的内部函数。
+//     - _uploadToGist(): 上传到Gist。这是用于Gist上传的内部函数。
+//     - _fetchFromGist(token): 从Gist拉取。这是用于Gist下载的内部函数。
+
+// 6. UI RENDERER (DOM 操作)
+//   - UI: UI渲染对象
+//     - els: DOM元素引用对象
+//       - viewList 
+//       - viewChat 
+//       - contactContainer 
+//       - chatMsgs 
+//       - chatTitle 
+//       - status 
+//       - input 
+//       - sendBtn 
+//       - rerollBtn 
+//       - modalOverlay 
+//       - mainModal 
+//       - wiModal 
+//       - wiList 
+//       - wiBookSelect 
+//       - wiBookCharSelect 
+//       - settingUrl 
+//       - settingKey 
+//       - settingModel 
+//       - fetchBtn 
+//       - themeLight 
+//       - themeDark 
+//     - init(): 初始化UI，包括渲染联系人、云同步和外观。这是用于启动UI的函数。
+//     - applyAppearance(): 应用壁纸、主题和字体。这是用于设置外观的函数。
+//     - toggleTheme(newTheme): 切换主题并保存。这是用于切换日夜模式的函数。
+//     - switchView(viewName): 切换视图（列表/聊天）。这是用于切换页面的函数。
+//     - renderContacts(): 渲染联系人列表。这是用于绘制左侧联系人的函数。
+//     - renderBookSelect(): 渲染世界书下拉框。这是用于更新书选择的函数。
+//     - updateCurrentBookSettingsUI(): 更新当前书设置UI。这是用于同步书绑定的函数。
+//     - renderWorldInfoList(): 渲染世界信息条目列表。这是用于绘制条目列表的函数。
+//     - initWorldInfoTab(): 初始化世界书Tab。这是用于设置世界书界面的函数。
+//     - showEditModal(oldText, onConfirmCallback): 显示编辑弹窗。这是用于消息编辑的函数。
+//     - removeLatestAiBubbles(): 移除最后AI消息。这是用于重滚前的清理函数。
+//     - renderChatHistory(contact, isLoadMore, keepScrollPosition): 渲染聊天历史，支持分页。这是用于绘制聊天记录的函数。
+//     - createSingleBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex, shouldAnimate): 创建单个气泡。这是用于生成消息DOM的函数。
+//     - appendMessageBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex): 追加消息气泡。这是用于添加新消息的函数。
+//     - appendSeparator(shouldAnimate): 插入分割线。这是用于添加聊天分隔的函数。
+//     - scrollToBottom(): 滚动到底部。这是用于聊天滚动的函数。
+//     - setLoading(isLoading, contactId): 设置加载状态。这是用于显示“正在输入”的函数。
+//     - updateRerollState(contact): 更新重滚按钮状态。这是用于控制重滚的函数。
+//     - playWaterfall(fullText, avatar, timestamp, historyIndex): 瀑布式播放AI响应。这是用于动画显示AI消息的函数。
+//     - initStatusBar(): 初始化顶栏状态。这是用于时间和电量的函数。
+//     - renderPresetMenu(): 渲染API预设菜单。这是用于设置预设下拉的函数。
+
+// 7. APP CONTROLLER (业务逻辑)
+//   - App: 应用控制器对象
+//     - els: UI.els 
+//     - init(): 初始化应用，包括加载和绑定。这是用于启动应用的函数。
+//     - enterChat(id): 进入聊天视图。这是用于切换到聊天的函数。
+//     - handleSend(isReroll): 处理发送消息。这是用于发送和重滚的函数。
+//     - openSettings(): 打开设置弹窗。这是用于显示主设置的函数。
+//     - switchWorldInfoBook(bookId): 切换世界书。这是用于选择书的函数。
+//     - bindCurrentBookToChar(charId): 绑定书到角色。这是用于设置书绑定的函数。
+//     - loadWorldInfoEntry(uid): 加载条目到编辑器。这是用于编辑条目的函数。
+//     - saveWorldInfoEntry(): 保存条目。这是用于持久化条目的函数。
+//     - deleteWorldInfoEntry(): 删除条目。这是用于移除条目的函数。
+//     - clearWorldInfoEditor(): 清空编辑器。这是用于重置条目表单的函数。
+//     - createNewBook(): 创建新书。这是用于添加书的函数。
+//     - renameCurrentBook(): 重命名当前书。这是用于修改书名的函数。
+//     - deleteCurrentBook(): 删除当前书。这是用于移除书的函数。
+//     - exportCurrentBook(): 导出当前书。这是用于保存书为JSON的函数。
+//     - handleImportWorldInfo(file): 处理导入世界信息。这是用于上传书的函数。
+//     - handleSavePreset(): 保存API预设。这是用于添加预设的函数。
+//     - handleLoadPreset(index): 加载预设。这是用于应用预设的函数。
+//     - handleDeletePreset(): 删除预设。这是用于移除预设的函数。
+//     - saveSettingsFromUI(): 从UI保存设置。这是用于持久化设置的函数。
+//     - handleMessageAction(action): 处理消息动作（如编辑、删除）。这是用于上下文菜单的函数。
+//     - hideMessageContextMenu(): 隐藏上下文菜单。这是用于关闭菜单的函数。
+//     - showMessageContextMenu(msgIndex, rect): 显示上下文菜单。这是用于弹出菜单的函数。
+//     - bindEvents(): 绑定所有事件。这是用于设置监听器的函数。
+//     - readFile(file): 读取文件为Base64。这是用于处理上传的函数。
+//     - handleTestConnection(): 测试API连接。这是用于验证API的函数。
+//     - fetchModelsForUI(): 从UI拉取模型。这是用于更新模型列表的函数。
+//     - bindImageUpload(inputId, imgId, inputUrlId, callback): 绑定图片上传。这是用于处理头像的函数。
+//     - openEditModal(id): 打开角色编辑弹窗。这是用于新建/编辑角色的函数。
+//     - saveContactFromModal(): 从弹窗保存角色。这是用于持久化角色的函数。
+
+// 8. UTILS & EXPORTS (工具与启动)
+//   - formatTimestamp(): 格式化时间戳。这是用于生成消息时间的函数。
+//   - window.exportData(): 导出数据。这是用于全局备份的函数。
+//   - window.importData(input): 导入数据。这是用于全局恢复的函数。
+//   - renderer: marked.Renderer对象，重写了table渲染。这是用于自定义Markdown的渲染器。
+//   - parseCustomMarkdown(text): 解析Markdown为HTML。这是用于渲染消息的函数。
+//   - cleanMarkdownForCopy(text): 清洗Markdown为纯文本。这是用于复制消息的函数。
+//   - window.onload: 启动App.init。这是用于页面加载的函数。
 
 
 // =========================================
@@ -162,7 +202,10 @@ const CONFIG = {
         GIST_TOKEN: '',
         THEME: 'light',
         FONT_SIZE: 16, // ★★★ 新增：默认字体大小为16px
-        API_PRESETS: [] 
+        API_PRESETS: [],
+        // ★★★ 新增下面两行 ★★★
+        CUSTOM_CSS: '', 
+        CSS_PRESETS: [],
     },
     SYSTEM_PROMPT: `
 现在，你就是下述人设中的角色，请完全代入角色设定，与用户交流。
@@ -1168,43 +1211,98 @@ const UI = {
         this.applyAppearance();
     },
 
-applyAppearance() {
+    // 1. 替换原有的 applyAppearance
+    applyAppearance() {
         const settings = STATE.settings;
         
-        // 1. 获取设置（优先读设置，没有则读默认）
-        // 注意：这里全部改回大写 key，和你原来的数据保持一致
+        // --- 读取设置 (注意保持大写 Key) ---
         const WALLPAPER = settings.WALLPAPER || CONFIG.DEFAULT.WALLPAPER;
         const THEME = settings.THEME || CONFIG.DEFAULT.THEME; 
-        const FONT_SIZE = settings.FONT_SIZE || CONFIG.DEFAULT.FONT_SIZE; // 新增
+        const FONT_SIZE = settings.FONT_SIZE || CONFIG.DEFAULT.FONT_SIZE;
+        const CUSTOM_CSS = settings.CUSTOM_CSS || CONFIG.DEFAULT.CUSTOM_CSS; // 新增
 
-        // 2. 应用壁纸
-        // 这里就不会报错了，因为上面定义了 const WALLPAPER
+        // --- 1. 处理壁纸 ---
         document.body.style.backgroundImage = `url('${WALLPAPER}')`;
-        
-        if (WALLPAPER === 'wallpaper.jpg' && THEME !== 'dark') {
+        // 如果是默认壁纸且不是夜间/自定义模式，给个浅灰背景
+        if (WALLPAPER === 'wallpaper.jpg' && THEME === 'light') {
             document.body.style.backgroundColor = '#f2f2f2';
-        }
-
-        // 3. 应用主题
-        // 这里必须用大写 THEME 判断
-        if (THEME === 'dark') {
-            document.body.classList.add('dark-mode');
-            if(this.els.themeDark) this.els.themeDark.checked = true;
         } else {
-            document.body.classList.remove('dark-mode');
-            if(this.els.themeLight) this.els.themeLight.checked = true;
+            document.body.style.backgroundColor = ''; 
         }
 
-        // 4. ★★★ 应用字体大小 (新增功能)
+        // --- 2. 处理字体 ---
         document.documentElement.style.setProperty('--app-font-size', FONT_SIZE + 'px');
-
-        // 同步滑块显示
         const slider = document.getElementById('font-size-slider');
         const label = document.getElementById('font-size-value');
         if (slider) slider.value = FONT_SIZE;
         if (label) label.textContent = FONT_SIZE + 'px';
+
+        // --- 3. 处理主题 (核心修改) ---
+        const body = document.body;
+        
+        // 清理旧类名
+        body.classList.remove('light-mode', 'dark-mode', 'custom-mode');
+
+        // 获取或创建用于注入 CSS 的 style 标签
+        let customStyleTag = document.getElementById('user-custom-css');
+        if (!customStyleTag) {
+            customStyleTag = document.createElement('style');
+            customStyleTag.id = 'user-custom-css';
+            document.head.appendChild(customStyleTag);
+        }
+
+        // 获取 CSS 面板 DOM (用于显示/隐藏)
+        const cssPanel = document.getElementById('custom-css-panel');
+
+        // 判断主题逻辑
+        if (THEME === 'custom') {
+            body.classList.add('custom-mode');
+            customStyleTag.textContent = App.prefixUserCss(CUSTOM_CSS);// 注入用户 CSS
+            if (cssPanel) cssPanel.classList.remove('hidden'); // 显示面板
+            
+            // 同步输入框的值 (防止刷新后输入框是空的)
+            const cssInput = document.getElementById('custom-css-input');
+            if (cssInput && cssInput.value !== CUSTOM_CSS) {
+                cssInput.value = CUSTOM_CSS;
+            }
+
+        } else {
+            // 非自定义模式
+            customStyleTag.textContent = ''; // 清空自定义样式
+            if (cssPanel) cssPanel.classList.add('hidden'); // 隐藏面板
+            
+            if (THEME === 'dark') {
+                body.classList.add('dark-mode');
+            } else {
+                body.classList.add('light-mode');
+            }
+        }
+
+        // --- 4. 同步 Radio 按钮状态 ---
+        if(this.els.themeLight) this.els.themeLight.checked = (THEME === 'light');
+        if(this.els.themeDark) this.els.themeDark.checked = (THEME === 'dark');
+        const themeCustomBtn = document.getElementById('theme-custom');
+        if(themeCustomBtn) themeCustomBtn.checked = (THEME === 'custom');
     },
 
+    // 2. 新增：渲染预设下拉框
+    renderCssPresetMenu() {
+        const select = document.getElementById('css-preset-select');
+        if (!select) return;
+        
+        // 清空现有选项，保留第一项提示
+        select.innerHTML = '<option value="">-- 选择样式预设 --</option>';
+        
+        const presets = STATE.settings.CSS_PRESETS || [];
+        presets.forEach((preset, index) => {
+            const option = document.createElement('option');
+            option.value = index; 
+            option.textContent = preset.name;
+            select.appendChild(option);
+        });
+    },
+
+    // 保持 toggleTheme 不变，或者用你刚才发的那个
     async toggleTheme(newTheme) {
         STATE.settings.THEME = newTheme;
         await Storage.saveSettings();
@@ -1956,7 +2054,7 @@ const App = {
         UI.renderContacts(); 
     },
 
-// APP CONTROLLER.handleSend
+    // APP CONTROLLER.handleSend
     async handleSend(isReroll = false) {
         const contact = STATE.contacts.find(c => c.id === STATE.currentContactId);
         if (!contact) return;
@@ -2139,20 +2237,37 @@ const App = {
         const s = STATE.settings;
         UI.els.settingUrl.value = s.API_URL || '';
         UI.els.settingKey.value = s.API_KEY || '';
-        UI.els.settingModel.value = s.MODEL || 'zai-org/GLM-4.6';
-        if (document.getElementById('gist-token')) document.getElementById('gist-token').value = s.GIST_TOKEN || ''; 
         
+        // 注意：如果你有其他地方在 fetchModels，这里可能需要保留原有逻辑，或者直接显示当前 Model
+        UI.els.settingModel.value = s.MODEL || 'zai-org/GLM-4.6';
         if (s.MODEL) UI.els.settingModel.innerHTML = `<option value="${s.MODEL}">${s.MODEL}</option>`;
         
+        if (document.getElementById('gist-token')) document.getElementById('gist-token').value = s.GIST_TOKEN || ''; 
+        
+        // 壁纸回显
         const previewImg = document.getElementById('wallpaper-preview-img');
-        if (s.WALLPAPER && s.WALLPAPER.startsWith('data:')) {
+        const previewDiv = document.getElementById('wallpaper-preview');
+        if (previewImg && previewDiv && s.WALLPAPER && s.WALLPAPER.startsWith('data:')) {
             previewImg.src = s.WALLPAPER;
-            document.getElementById('wallpaper-preview').classList.remove('hidden');
+            previewDiv.classList.remove('hidden');
+        }
+
+        // ★★★ 确保 Radio 勾选状态正确 ★★★
+        // applyAppearance 内部已经写了根据 s.THEME 去勾选对应 radio 的逻辑
+        // 所以调用它，就能让弹窗里的 radio 状态和当前实际状态同步
+        UI.applyAppearance();
+
+        // ★★★ CSS 输入框回显 ★★★
+        const cssInput = document.getElementById('custom-css-input');
+        if (cssInput) {
+            cssInput.value = s.CUSTOM_CSS || '';
         }
 
         UI.renderPresetMenu();
         // ★★★ 世界书初始化 ★★★
         UI.initWorldInfoTab();
+        // ★★★ 自定义主题预设下拉框初始化 ★★★
+        UI.renderCssPresetMenu();
     },
 
     // --- 世界书相关操作 ---
@@ -2383,10 +2498,11 @@ const App = {
 
     // ----------------------
 
-    async handleSavePreset() {
+async handleSavePreset() {
         const name = prompt("请为当前配置输入一个预设名称 (如: Gemini Pro)");
         if (!name) return;
 
+        // 1. 构造新预设对象
         const preset = {
             name: name,
             url: UI.els.settingUrl.value.trim(),
@@ -2394,11 +2510,36 @@ const App = {
             model: UI.els.settingModel.value
         };
 
+        // 2. 校验必填项
         if(!preset.url || !preset.key) return alert("请先填好 API 地址和密钥！");
 
-        STATE.settings.API_PRESETS.push(preset);
+        // 3. 确保数组存在 (防御性编程)
+        if (!STATE.settings.API_PRESETS) STATE.settings.API_PRESETS = [];
+
+        // 4. ★★★ 核心修改：查重与覆盖逻辑 ★★★
+        // findIndex 会返回找到的元素的索引，找不到则返回 -1
+        const existingIndex = STATE.settings.API_PRESETS.findIndex(p => p.name === name);
+
+        if (existingIndex >= 0) {
+            // 如果找到了同名的
+            if (confirm(`API 预设 "${name}" 已存在，确定要覆盖吗？`)) {
+                // 用户点击“确定” -> 直接修改数组中对应位置的数据
+                STATE.settings.API_PRESETS[existingIndex] = preset;
+            } else {
+                // 用户点击“取消” -> 停止操作，什么都不存
+                return;
+            }
+        } else {
+            // 如果没找到同名的 -> 像以前一样添加到末尾
+            STATE.settings.API_PRESETS.push(preset);
+        }
+
+        // 5. 保存并刷新菜单
         await Storage.saveSettings();
         UI.renderPresetMenu(); 
+        
+        // 建议加个成功提示，体验更好
+        alert(`API 预设 "${name}" 已保存`);
     },
 
     handleLoadPreset(index) {
@@ -2442,18 +2583,30 @@ async saveSettingsFromUI() {
         if(tEl) s.GIST_TOKEN = tEl.value.trim() || ''; 
 
         // 处理壁纸
-        const wallpaperPreview = document.getElementById('wallpaper-preview-img').src;
-        if(wallpaperPreview && wallpaperPreview.startsWith('data:')) {
-            s.WALLPAPER = wallpaperPreview;
+        const wallpaperPreview = document.getElementById('wallpaper-preview-img');
+        // 加个判空保护，防止 wallpaperPreview 为 null 报错
+        if(wallpaperPreview && wallpaperPreview.src && wallpaperPreview.src.startsWith('data:')) {
+            s.WALLPAPER = wallpaperPreview.src;
         } else if (!s.WALLPAPER) {
             s.WALLPAPER = 'wallpaper.jpg';
         }
 
-        // ★★★ 修正：保存主题时，必须存入大写的 .THEME
-        const themeDarkBtn = document.getElementById('theme-dark');
-        s.THEME = (themeDarkBtn && themeDarkBtn.checked) ? 'dark' : 'light';
+        // --- ★★★ 修正主题保存逻辑 (核心修改) ★★★ ---
+        // 不再只判断 dark/light，而是获取选中的那个 radio 的 value
+        const checkedTheme = document.querySelector('input[name="theme-select"]:checked');
+        if (checkedTheme) {
+            s.THEME = checkedTheme.value; // 这里会拿到 'light', 'dark' 或 'custom'
+        } else {
+            s.THEME = 'light'; // 兜底默认值
+        }
 
-        // ★★★ 新增：保存字体大小，存入大写的 .FONT_SIZE
+        // --- ★★★ 新增：保存自定义CSS内容 ★★★ ---
+        const cssInput = document.getElementById('custom-css-input');
+        if (cssInput) {
+            s.CUSTOM_CSS = cssInput.value;
+        }
+
+        // 处理字体大小
         const slider = document.getElementById('font-size-slider');
         if (slider) {
             s.FONT_SIZE = parseInt(slider.value, 10);
@@ -3058,7 +3211,59 @@ async saveSettingsFromUI() {
                 reader.readAsText(file);
             });
         }
+
+
+
+
+        // --- 新增：外观相关事件监听 ---
+        
+        // (1) 监听主题 Radio 切换 (日间/夜间/自定义)
+        const themeRadios = document.querySelectorAll('input[name="theme-select"]');
+        themeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                UI.toggleTheme(e.target.value);
+            });
+        });
+
+        // (2) 监听 CSS 输入框 (实时预览)
+        const cssInput = document.getElementById('custom-css-input');
+        if (cssInput) {
+            cssInput.addEventListener('input', (e) => {
+                const val = e.target.value;
+                STATE.settings.CUSTOM_CSS = val; // 更新状态
+                
+                // 如果当前是自定义模式，实时注入样式
+                if (STATE.settings.THEME === 'custom') {
+                    const styleTag = document.getElementById('user-custom-css');
+                    if (styleTag) {styleTag.textContent = this.prefixUserCss(val)};
+                }
+            });
+            // 输入框失去焦点时保存，避免频繁写入数据库
+            cssInput.addEventListener('blur', () => {
+                Storage.saveSettings();
+            });
+        }
+
+        // (3) 按钮事件：保存、删除、加载预设
+        const saveCssBtn = document.getElementById('save-css-btn');
+        if (saveCssBtn) saveCssBtn.addEventListener('click', () => this.handleSaveCssPreset());
+
+        const delCssBtn = document.getElementById('del-css-btn');
+        if (delCssBtn) delCssBtn.addEventListener('click', () => this.handleDeleteCssPreset());
+
+        const cssSelect = document.getElementById('css-preset-select');
+        if (cssSelect) {
+            cssSelect.addEventListener('change', (e) => {
+                if (e.target.value !== "") this.handleLoadCssPreset(e.target.value);
+            });
+        }
+        
+        // 别忘了在 init 或者打开设置弹窗时调用一次 UI.renderCssPresetMenu()
+        // 建议加在 openSettings 函数里，或者 App.init 的最后
     },
+
+
+
 
     readFile(file) {
         return new Promise((r, j) => {
@@ -3163,7 +3368,7 @@ async saveSettingsFromUI() {
         };
     },
     
-openEditModal(id) {
+    openEditModal(id) {
         this.editingId = id;
         const modal = document.getElementById('modal-overlay');
         modal.classList.remove('hidden');
@@ -3300,6 +3505,120 @@ openEditModal(id) {
 
         // 关闭弹窗
         document.getElementById('modal-overlay').classList.add('hidden');
+    },
+
+
+
+    // ======================自定义css=============================
+
+    // 1. 保存预设 (改为弹窗输入)
+    handleSaveCssPreset() {
+        const cssInput = document.getElementById('custom-css-input');
+        const css = cssInput.value;
+
+        if (!css) return alert('CSS 内容为空，无需保存');
+
+        // ★★★ 这里改为弹窗输入 ★★★
+        const name = prompt("请为当前样式起个名字 (如: 可爱小猫)");
+        if (!name) return; // 用户点击取消或没输入
+
+        // 确保数组存在
+        if (!STATE.settings.CSS_PRESETS) STATE.settings.CSS_PRESETS = [];
+
+        // 查重逻辑
+        const existingIndex = STATE.settings.CSS_PRESETS.findIndex(p => p.name === name);
+        if (existingIndex >= 0) {
+            if(!confirm(`预设 "${name}" 已存在，要覆盖吗？`)) return;
+            STATE.settings.CSS_PRESETS[existingIndex].css = css;
+        } else {
+            STATE.settings.CSS_PRESETS.push({ name: name, css: css });
+        }
+
+        Storage.saveSettings();
+        UI.renderCssPresetMenu(); // 刷新下拉框
+        alert(`样式预设 "${name}" 已保存！`);
+    },
+
+    // 2. 加载预设 (删除了对旧输入框的操作)
+    handleLoadCssPreset(index) {
+        const presets = STATE.settings.CSS_PRESETS;
+        const preset = presets[index];
+        
+        if (preset) {
+            // 填入 CSS 编辑框
+            const cssInput = document.getElementById('custom-css-input');
+            if(cssInput) cssInput.value = preset.css;
+
+            // ★★★ 注意：我删除了原来填入 nameInput 的那行代码，因为 input 已经被删了 ★★★
+
+            // 更新状态
+            STATE.settings.CUSTOM_CSS = preset.css;
+            
+            // 立即生效
+            if (STATE.settings.THEME === 'custom') {
+                const styleTag = document.getElementById('user-custom-css');
+                if (styleTag) styleTag.textContent = this.prefixUserCss(preset.css);
+            }
+            Storage.saveSettings();
+        }
+    },
+
+    // 3. 删除预设 (删除了对旧输入框的操作)
+    handleDeleteCssPreset() {
+        const select = document.getElementById('css-preset-select');
+        const index = select.value;
+
+        if (index === "") return alert("请先选择一个要删除的预设");
+
+        if (confirm("确定要删除这个样式预设吗？")) {
+            STATE.settings.CSS_PRESETS.splice(index, 1);
+            Storage.saveSettings();
+            UI.renderCssPresetMenu();
+            
+            // 清空选择框
+            select.value = "";
+            
+            // ★★★ 注意：我删除了原来清空 nameInput 的那行代码 ★★★
+        }
+    },
+
+    /**
+     * 为用户输入的CSS规则自动添加 'body.custom-mode' 前缀以提高权重
+     * @param {string} rawCss 用户输入的原始CSS字符串
+     * @returns {string} 处理后带前缀的CSS字符串
+     */
+    prefixUserCss(rawCss) {
+        if (!rawCss || typeof rawCss !== 'string') return '';
+
+        const prefix = 'body.custom-mode ';
+        
+        // 简单的CSS解析：按 '}' 分割成块，然后处理每个块的头部
+        return rawCss.split('}').map(ruleBlock => {
+            if (!ruleBlock.trim()) return ''; // 忽略空块
+
+            const parts = ruleBlock.split('{');
+            if (parts.length < 2) return ruleBlock + '}'; // 如果不是标准的 "选择器 { 属性" 结构，直接返回
+
+            const selectors = parts[0];
+            const declarations = '{' + parts.slice(1).join('{'); // 重新拼接属性部分
+
+            // 处理组合选择器，如 h1, h2, .main-title
+            const prefixedSelectors = selectors.split(',')
+                .map(selector => {
+                    const trimmedSelector = selector.trim();
+                    if (trimmedSelector) {
+                        // 忽略 @keyframes, @font-face 等 @ 规则
+                        if (trimmedSelector.startsWith('@')) {
+                            return trimmedSelector;
+                        }
+                        return prefix + trimmedSelector;
+                    }
+                    return '';
+                })
+                .join(', '); // 用逗号和空格重新连接
+
+            return prefixedSelectors + declarations + '}';
+        }).join('\n'); // 最终用换行符合并所有规则
     },
     
 };

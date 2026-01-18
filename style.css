@@ -3179,3 +3179,145 @@ body.dark-mode .history-btn {
 }
 
 
+/* =========================================
+   复用你原来的风格组件
+   ========================================= */
+
+
+/* 通用按钮基础样式 (保存按钮) */
+.icon-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 11px 16px;
+    border: 0.7px solid #ddd; /* 默认边框颜色 */
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn:hover {
+    background: #f0f0f0;
+}
+
+.icon-btn:active {
+    transform: scale(0.98);
+}
+
+/* 危险按钮样式 (删除按钮) */
+.icon-btn.danger {
+    background: rgba(255, 80, 80, 0.1);
+    color: #d32f2f;
+    border: 1px solid rgba(255, 80, 80, 0.9);
+}
+
+.icon-btn.danger:hover {
+    background: rgba(255, 80, 80, 0.2);
+}
+
+/* =========================================
+   自定义 CSS 面板特定样式
+   ========================================= */
+
+/* 选项 Label 布局 */
+.custom-theme-trigger {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    /* 假设父级 main-option 已经有一些样式，这里做补充 */
+}
+
+.custom-theme-trigger .option-content {
+    display: flex;
+    align-items: center;
+}
+
+.custom-theme-trigger .option-icon {
+    font-size: 18px;
+    margin-right: 10px;
+}
+
+/* Radio 按钮颜色 */
+#theme-custom {
+    accent-color: #666;
+    cursor: pointer;
+}
+
+/* 面板容器 */
+#custom-css-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* 元素之间的间距 */
+    margin-top: 10px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.03); /* 比原来的 0.05 稍微淡一点，更高级 */
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.05); /* 增加微弱边框 */
+}
+
+/* JS控制显隐的类 (保留你的逻辑) */
+#custom-css-panel.hidden {
+    display: none;
+}
+
+/* 每一行的布局容器 */
+.panel-row {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+}
+
+/* 按钮组容器 */
+.btn-group {
+    display: flex;
+    gap: 10px;
+}
+
+/* 代码编辑框特定微调 */
+textarea.setting-input.code-editor {
+    height: 200px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace; /* 等宽字体适合写代码 */
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical; /* 允许垂直拖动调整大小 */
+}
+
+
+/* =========================================
+   自定义模式专属：样式重置 (Clean Slate)
+   作用：当切换到自定义模式时，清除系统默认的边框、阴影和模糊
+   ========================================= */
+
+/* 清除气泡的默认装饰 */
+body.custom-mode .message-wrapper .message-bubble,
+body.custom-mode .message-bubble {
+    box-shadow: none;        /* 去掉阴影 */
+    border: none;            /* 去掉边框 */
+    backdrop-filter: none;   /* 去掉毛玻璃 */
+    -webkit-backdrop-filter: none;
+    background-image: none;  /* 如果原本有背景图也去掉 */
+}
+
+/* 如果你原来的气泡有小尾巴（伪元素），可能也需要重置，
+   除非你想保留它们。如果想让用户完全自定义形状，建议也隐藏掉 */
+body.custom-mode .message-wrapper .message-bubble::before,
+body.custom-mode .message-wrapper .message-bubble::after {
+    display: none;           /* 默认隐藏小尾巴，用户想要的话自己写 display: block */
+    content: none;
+}
+
+
+
+
+
+
+
+
+

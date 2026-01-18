@@ -284,7 +284,7 @@
                                 <span style="font-size: 18px; margin-right: 10px;">☀️</span>
                                 <span>日间模式</span>
                             </div>
-                            <input type="radio" name="theme-select" id="theme-light" checked style="accent-color: #666;">
+                            <input type="radio" name="theme-select" id="theme-light" value="light" style="accent-color: #666;">
                         </label>
 
                         <label class="main-option" style="justify-content: space-between; cursor: pointer;">
@@ -292,24 +292,51 @@
                                 <span style="font-size: 18px; margin-right: 10px;">🌙</span>
                                 <span>夜间模式</span>
                             </div>
-                            <input type="radio" name="theme-select" id="theme-dark" style="accent-color: #666;">
+                            <input type="radio" name="theme-select" id="theme-dark" value="dark" style="accent-color: #666;">
                         </label>
-                    </div>
 
-                    <!-- 字体大小调整 -->
+                        <!-- 新增：自定义模式 -->
+                        <label class="main-option custom-theme-trigger">
+                            <div class="option-content">
+                                <span class="option-icon">🎨</span>
+                                <span>自定义 (CSS)</span>
+                            </div>
+                            <input type="radio" name="theme-select" id="theme-custom" value="custom">
+                        </label>
+
+                        <!-- 新增：自定义CSS控制面板 (默认隐藏，JS控制显示) -->
+                        <div id="custom-css-panel" class="main-options hidden">
+                            
+                            <!-- 第1行：预设下拉框 -->
+                            <div class="panel-row">
+                                <select id="css-preset-select" class="setting-input">
+                                    <option value="">-- 选择样式预设 --</option>
+                                </select>
+                            </div>
+
+                            <!-- 第2行：操作按钮 -->
+                            <div class="panel-row btn-group">
+                                <button id="save-css-btn" class="icon-btn">保存预设</button>
+                                <button id="del-css-btn" class="icon-btn danger">删除预设</button>
+                            </div>
+
+                            <!-- 第3行：CSS 编辑区域 -->
+                            <textarea id="custom-css-input" class="setting-input code-editor" placeholder="/* 在这里输入 CSS 代码 */&#10;.message-wrapper.user .message-bubble {&#10;    background: #95ec69;&#10;    color: black;&#10;}"></textarea>
+                        </div>
+
+                    </div> 
+
+                    <!-- 字体大小调整 (保持不变) -->
                     <h3 class="section-title">字体大小</h3>
                     <div class="main-options">
                         <div class="main-option" style="flex-direction: column; align-items: stretch; padding: 15px;">
-                            <div style="display:flex; justify-content: space-between; margin-bottom: 10px; color: var(--text-color);">
+                            <div style="display:flex; justify-content: space-between; color: var(--text-color);">
                                 <span style="font-size: 0.9rem;">聊天文字缩放</span>
                                 <span id="font-size-value" style="font-weight:bold;">16px</span>
                             </div>
-                            <!-- 范围从12px到24px，默认16px -->
                             <input type="range" id="font-size-slider" min="12" max="24" step="1" value="16" style="width: 100%; accent-color: #666;">
                         </div>
                     </div>
-
-
 
                     
                 </div>
